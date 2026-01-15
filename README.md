@@ -13,7 +13,7 @@
 
 ## 🚀 Quick Start (2 minutes)
 
-
+bash'''
 git clone https://github.com/yourusername/sts-trading-journal.git
 cd sts-trading-journal
 pip install -r requirements.txt
