@@ -6,8 +6,8 @@ import sqlite3
 import os
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_bcrypt import Bcrypt
-from functools import wraps, lru_cache
+
+from functools import wraps
 from flask_limiter.util import get_remote_address
 from flask_limiter import Limiter
 import pandas as pd
@@ -60,7 +60,7 @@ class LoginForm(FlaskForm):
 config = configparser.ConfigParser()
 config.read('config.ini')
 app.secret_key = config['flask']['secret_key']
-bcrypt = Bcrypt(app)
+
 @app.context_processor
 def inject_csrf_token():
     from flask_wtf.csrf import generate_csrf
@@ -110,13 +110,14 @@ app.config['UPLOAD_FOLDER']= 'static/uploads'
 KNOWLEDGE_UPLOAD_FOLDER = 'static/uploads/knowledge'
 os.makedirs(KNOWLEDGE_UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'mp4', 'webm', 'ogg'}
+
 app.config["MAX_CONTENT_LENGTH"] = 512*1024*1024
 app.config['PERMANENT_SESSION_LIFETIME'] = 14400
 
 
 
 limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"])
-@limiter.limit("5 per minute") 
+
 
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("5 per minute")
@@ -233,7 +234,6 @@ def init_db():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_status ON trades(status)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_symbol ON trades(symbol)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_sort ON trades(sort)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_parent_id ON trades(parent_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_parent_open ON trades(parent_id, open_time DESC)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_parent_status ON trades(parent_id, status)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_close_time ON trades(close_time)")
@@ -468,17 +468,7 @@ def parse_time(s):
         except ValueError:
             continue
     return None
-@lru_cache(maxsize=12)
-def get_trades_by_date_range_cached(start_date: str, end_date: str):
-    conn = get_db()
-    query = """
-            SELECT *, DATE(open_time) as trade_date 
-            FROM trades 
-            WHERE parent_id IS NULL 
-            AND open_time BETWEEN ? AND ?
-            ORDER BY open_time DESC
-        """
-    return conn.execute(query, (start_date, end_date)).fetchall()
+
 def compress_image(file, max_width=2000, quality=100):  #
     try:
         file.seek(0)  
@@ -619,16 +609,14 @@ def index():
 
 
 
-    @lru_cache(maxsize=12)
-    def get_monthly_rr_cached(year_month: str):
-        result = conn.execute("""
-            SELECT COALESCE(SUM(RR), 0) FROM trades 
-            WHERE parent_id IS NULL AND status = 'CLOSED' 
-              AND strftime('%Y-%m', close_time) = ?
-        """, (year_month,)).fetchone()
-        return result[0]
-
-    monthly_rr = get_monthly_rr_cached(datetime.now().strftime('%Y-%m'))
+    conn = get_db()   # already have conn = get_db() higher up
+    year_month = datetime.now().strftime('%Y-%m')
+    monthly_rr_result = conn.execute("""
+        SELECT COALESCE(SUM(RR), 0) FROM trades
+        WHERE parent_id IS NULL AND status = 'CLOSED'
+        AND strftime('%Y-%m', close_time) = ?
+    """, (year_month,)).fetchone()
+    monthly_rr = monthly_rr_result[0] if monthly_rr_result else 0
     
 
      
@@ -996,9 +984,14 @@ def journal(date_str=None):
         end_of_month = f"{year_month}-{last_day:02d}"
 
         # This will be cached for 32 different months → basically instant after first load
-        all_month_trades = get_trades_by_date_range_cached(start_of_month + " 00:00:00", 
-                                                          end_of_month + " 23:59:59")
-
+        conn = get_db()
+        all_month_trades = conn.execute("""
+            SELECT *, DATE(open_time) as trade_date
+            FROM trades
+            WHERE parent_id IS NULL
+            AND open_time BETWEEN ? AND ?
+            ORDER BY open_time DESC
+        """, (start_of_month + " 00:00:00", end_of_month + " 23:59:59")).fetchall()
         # Filter only today's parent trades
         trades = [t for t in all_month_trades if t['trade_date'] == date_str]
 
@@ -2291,7 +2284,7 @@ def partial_close_inline_spot(parent_id):
             new_parent_status = parent_trade['status']
             parent_close_time = parent_trade['close_time']
 
-        else:  # CLOSED
+        else:  
             close_price = request.form.get('close_price')
             close_time = request.form.get('close_time')
             close_price = float(close_price) if close_price else None
@@ -2302,7 +2295,6 @@ def partial_close_inline_spot(parent_id):
                 flash('Close price is required for CLOSED partial', 'error')
                 return redirect(url_for('spot'))
 
-            # Calculate % gain for spot
             if open_price and open_price != 0:
                 pct_gain = round(((close_price - open_price) / open_price) * 100, 2)
             else:
@@ -2318,7 +2310,6 @@ def partial_close_inline_spot(parent_id):
                 new_parent_status = parent_trade['status']
                 parent_close_time = parent_trade['close_time']
 
-        # Insert partial trade
         conn.execute('''
             INSERT INTO spot_trades (
                 symbol, open_time, close_time, status,
@@ -2342,7 +2333,6 @@ def partial_close_inline_spot(parent_id):
             parent_id
         ))
 
-        # Update parent trade
         if status == 'CLOSED' and new_parent_risk <= 0:
             conn.execute('''
                 UPDATE spot_trades
@@ -2499,11 +2489,7 @@ def user_detail(user_id):
      
     return render_template('user_detail.html', user=user)
 
-@app.route('/statistics')
-@login_required
-def statistics():
-    conn = get_db()
-    return render_template('statistics.html', stats=stats_data)
+
 
 def smart_price(value):
     try:
