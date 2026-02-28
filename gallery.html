@@ -1,0 +1,684 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='gallery.css') }}">
+{% endblock %}
+{% block title %}Gallery{% endblock %}
+{% block content %}
+<div class="gallery-container">
+    <div class="gallery-header-alt">
+        <h1>Knowledge Gallery</h1>
+        <div class="page-counter">
+            <div class="counter-badge">
+                <span class="counter-posts">{{ total_posts }}</span>
+                <span class="counter-label">Posts</span>
+            </div>
+            <div class="counter-badge">
+                <span class="counter-images">{{ total_images }}</span>
+                <span class="counter-label">Images</span>
+            </div>
+        </div>
+        <button class="btn-add-new" onclick="toggleUploadForm()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add Post
+        </button>
+    </div>
+
+
+
+    <div class="search-section">
+        <div class="search-wrapper">
+            <input type="text" placeholder="Search by title or keywords..." value="{{ search }}" id="searchInput" autocomplete="off">
+            <span class="search-icon" id="searchIcon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+            </span>
+        </div>
+    </div>
+    <div class="upload-section" id="uploadSection">
+        <div class="upload-card">
+            <h2>Add New Post</h2>
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="add">
+                <div class="form-group">
+                    <label for="title">Title *</label>
+                    <input type="text" name="title" id="title" required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Description / Keywords</label>
+                    <textarea name="description" id="description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="images">Select Image(s) * (Hold Ctrl/Shift for multiple)</label>
+                    <div class="file-upload">
+                        <input type="file" name="images" id="images" required accept="image/*" multiple onchange="previewImages(event)">
+                        <label for="images" class="file-label">Choose Images</label>
+                    </div>
+                    <div id="imagePreview" class="image-preview multiple"></div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Upload</button>
+                    <button type="button" class="btn-cancel" onclick="toggleUploadForm()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="gallery-grid" id="galleryGrid">
+        {% for img in images %}
+        <div class="gallery-item" onclick="openModal({{ img.id }})">
+            <div class="image-wrapper">
+                {% if img.image_path and img.image_path|length > 0 %}
+                <img src="{{ url_for('static', filename='uploads/' + img.image_path[0]) }}" alt="{{ img.title }}" loading="lazy">
+                {% if img.image_path|length > 1 %}
+                <span class="multi-indicator">{{ img.image_path|length }} images</span>
+                {% endif %}
+                <div class="image-overlay">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                </div>
+                {% endif %}
+            </div>
+            <div class="image-info">
+                <h3>{{ img.title }}</h3>
+                {% if img.description %}
+                <p>{{ img.description|truncate(50) }}</p>
+                {% endif %}
+                <span class="image-date">{{ img.created_at[:10] }}</span>
+            </div>
+        </div>
+        {% else %}
+        <div class="no-images">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            <p>No images found</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% if has_more %}
+    <div class="load-more-container" style="text-align: center; margin: 50px 0;">
+        <button id="loadMoreBtn" class="btn-primary" style="padding: 14px 32px; font-size: 1.1rem;">
+            Load More
+        </button>
+        <div id="loading" style="display: none; margin-top: 20px; color: #666;">
+            <p>Loading more images...</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div id="imageModal" class="modal">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeModal()">&times;</span>
+        <button class="modal-zoom-btn" onclick="toggleZoom()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                <line x1="11" y1="8" x2="11" y2="14"></line>
+                <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg>
+        </button>
+        
+        <div class="modal-image-side" id="imageSide">
+            <div class="carousel">
+                <button class="carousel-prev" onclick="changeImage(-1)">&#10094;</button>
+                <img id="modalImage" src="" alt="">
+                <button class="carousel-next" onclick="changeImage(1)">&#10095;</button>
+                <div class="carousel-indicators" id="carouselIndicators"></div>
+            </div>
+        </div>
+        
+        <div class="modal-info-side">
+            <h2 id="modalTitle"></h2>
+            <p id="modalDescription"></p>
+            
+            <div class="modal-actions">
+                <button class="btn-edit" onclick="toggleEditMode()">Edit</button>
+                <form method="POST" style="display: inline;" onsubmit="return confirm('Delete this post?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="id" id="deleteId">
+                    <button type="submit" class="btn-delete">Delete</button>
+                </form>
+            </div>
+    
+            <form method="POST" id="editForm" class="edit-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="edit">
+                <input type="hidden" name="id" id="editId">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" name="title" id="editTitle" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" id="editDescription" rows="3"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Save</button>
+                    <button type="button" class="btn-cancel" onclick="toggleEditMode()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<script>
+let isZoomed = false;
+let isDragging = false;
+let startX, startY, scrollLeft, scrollTop;
+let currentImageIndex = 0;
+let currentPost = null;
+window.allImages = {{ images|tojson|safe }} || []; 
+
+let uploadedFiles = [];
+let dragData = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+
+    const previewContainer = document.getElementById('imagePreview');
+    if (previewContainer) {
+        previewContainer.addEventListener('dragover', handleDragOver);
+        previewContainer.addEventListener('dragleave', handleDragLeave);
+        previewContainer.addEventListener('drop', handleDrop);
+    }
+
+
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', loadMoreImages);
+        console.log('✅ Load More button attached!');
+    }
+
+    const searchInput = document.getElementById('searchInput');
+    const searchIcon = document.getElementById('searchIcon');
+    if (searchInput && searchIcon) {
+        function updateSearchIcon() {
+            if (searchInput.value.trim()) {
+                searchIcon.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>`;
+                searchIcon.classList.add('clear');
+            } else {
+                searchIcon.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>`;
+                searchIcon.classList.remove('clear');
+            }
+        }
+        
+        updateSearchIcon();
+        
+        searchIcon.addEventListener('click', function() {
+            if (searchInput.value.trim()) {
+                searchInput.value = '';
+                updateSearchIcon();
+                const url = new URL(window.location);
+                url.searchParams.delete('search');
+                url.searchParams.set('page', 1);
+                window.location.href = url.toString();
+            }
+        });
+        
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            updateSearchIcon();
+            searchTimeout = setTimeout(() => {
+                const searchTerm = this.value.trim();
+                const url = new URL(window.location);
+                if (searchTerm) {
+                    url.searchParams.set('search', searchTerm);
+                } else {
+                    url.searchParams.delete('search');
+                }
+                url.searchParams.set('page', 1);
+                window.location.href = url.toString();
+            }, 500);
+        });
+    }
+});
+
+function toggleUploadForm() {
+    const section = document.getElementById('uploadSection');
+    const isVisible = section.style.display === 'block';
+    section.style.display = isVisible ? 'none' : 'block';
+    
+    if (!isVisible) {
+        resetUploadForm();
+    }
+}
+
+function previewImages(event) {
+    const files = Array.from(event.target.files);
+    if (files.length === 0) return;
+    
+    uploadedFiles = files;
+    renderPreview();
+}
+
+function renderPreview() {
+    const preview = document.getElementById('imagePreview');
+    preview.innerHTML = '';
+    
+    uploadedFiles.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const previewItem = createPreviewItem(file, e.target.result, index);
+            preview.appendChild(previewItem);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function createPreviewItem(file, dataUrl, index) {
+    const container = document.createElement('div');
+    container.className = 'preview-item';
+    container.draggable = true;
+    container.dataset.index = index;
+    
+    const img = document.createElement('img');
+    img.src = dataUrl;
+    img.alt = file.name;
+    
+    const orderNum = document.createElement('div');
+    orderNum.className = 'order-number';
+    orderNum.textContent = index + 1;
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-preview';
+    removeBtn.type = 'button';
+    removeBtn.innerHTML = '×';
+    removeBtn.onclick = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        removePreviewItem(parseInt(container.dataset.index));
+    };
+    
+    container.appendChild(img);
+    container.appendChild(orderNum);
+    container.appendChild(removeBtn);
+
+    container.addEventListener('dragstart', handleDragStart);
+    container.addEventListener('dragend', handleDragEnd);
+    
+    return container;
+}
+
+function removePreviewItem(index) {
+    uploadedFiles.splice(index, 1);
+    renderPreview();
+}
+
+function handleDragStart(e) {
+    const target = e.currentTarget;
+    dragData = {
+        index: parseInt(target.dataset.index),
+        element: target
+    };
+    
+    target.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', dragData.index.toString());
+}
+
+function handleDragEnd(e) {
+    if (dragData?.element) {
+        dragData.element.classList.remove('dragging');
+    }
+    dragData = null;
+
+    document.querySelectorAll('.preview-item').forEach(item => {
+        item.classList.remove('drag-over');
+    });
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
+    const target = e.currentTarget;
+    if (dragData && dragData.index !== parseInt(target.dataset.index)) {
+        target.classList.add('drag-over');
+    }
+}
+
+function handleDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    
+    if (!dragData) return;
+    
+    const target = e.currentTarget;
+    const fromIndex = dragData.index;
+    const toIndex = parseInt(target.dataset.index);
+    
+    if (fromIndex !== toIndex) {
+        const [movedFile] = uploadedFiles.splice(fromIndex, 1);
+        uploadedFiles.splice(toIndex, 0, movedFile);
+
+        renderPreview();
+    }
+
+    document.querySelectorAll('.preview-item').forEach(item => {
+        item.classList.remove('drag-over');
+    });
+}
+
+
+function resetUploadForm() {
+    uploadedFiles = [];
+    document.getElementById('imagePreview').innerHTML = '';
+    document.getElementById('images').value = '';
+    document.getElementById('title').value = '';
+    document.getElementById('description').value = '';
+}
+
+function findImage(id) {
+    return window.allImages.find(img => img.id == id);
+}
+
+function openModal(id) {
+    const img = findImage(id);
+    if (!img) return;
+    
+    currentPost = img;
+    currentImageIndex = 0;
+    
+    document.getElementById('modalTitle').textContent = img.title;
+    document.getElementById('modalDescription').innerHTML = (img.description || '').replace(/\n/g, '<br>');
+    document.getElementById('deleteId').value = id;
+    document.getElementById('editId').value = id;
+    document.getElementById('editTitle').value = img.title;
+    document.getElementById('editDescription').value = img.description || '';
+    
+    document.getElementById('imageModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    updateCarousel();
+    resetZoom();
+}
+
+function updateCarousel() {
+    if (!currentPost) return;
+    const paths = currentPost.image_path || [];
+    if (paths.length === 0) return;
+    
+    document.getElementById('modalImage').src = '/static/uploads/' + paths[currentImageIndex];
+    
+    const prevBtn = document.querySelector('.carousel-prev');
+    const nextBtn = document.querySelector('.carousel-next');
+    
+    if (paths.length > 1) {
+        prevBtn.style.display = 'block';
+        nextBtn.style.display = 'block';
+    } else {
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+    }
+    updateIndicators();
+}
+
+function updateIndicators() {
+    const container = document.getElementById('carouselIndicators');
+    const paths = currentPost.image_path || [];
+    container.innerHTML = '';
+    
+    if (paths.length <= 1) return;
+    
+    paths.forEach((_, index) => {
+        const dot = document.createElement('div');
+        dot.className = 'carousel-dot' + (index === currentImageIndex ? ' active' : '');
+        dot.onclick = () => goToImage(index);
+        container.appendChild(dot);
+    });
+}
+
+function goToImage(index) {
+    if (!currentPost) return;
+    const paths = currentPost.image_path || [];
+    currentImageIndex = Math.max(0, Math.min(index, paths.length - 1));
+    updateCarousel();
+    resetZoom();
+}
+
+function changeImage(direction) {
+    if (!currentPost) return;
+    const paths = currentPost.image_path || [];
+    if (paths.length <= 1) return;
+    currentImageIndex = (currentImageIndex + direction + paths.length) % paths.length;
+    updateCarousel();
+    resetZoom();
+}
+
+function closeModal() {
+    document.getElementById('imageModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    document.getElementById('editForm').style.display = 'none';
+    resetZoom();
+}
+
+function resetZoom() {
+    isZoomed = false;
+    const imageSide = document.getElementById('imageSide');
+    imageSide.classList.remove('zoomed');
+    imageSide.scrollLeft = 0;
+    imageSide.scrollTop = 0;
+}
+
+function toggleZoom() {
+    const imageSide = document.getElementById('imageSide');
+    const img = document.getElementById('modalImage');
+    isZoomed = !isZoomed;
+    
+    if (isZoomed) {
+        imageSide.classList.add('zoomed');
+        setTimeout(() => {
+            const rect = imageSide.getBoundingClientRect();
+            const scale = 2.5;
+            const centerX = (img.naturalWidth * scale - rect.width) / 2;
+            const centerY = (img.naturalHeight * scale - rect.height) / 2;
+            imageSide.scrollLeft = Math.max(0, centerX);
+            imageSide.scrollTop = Math.max(0, centerY);
+        }, 100);
+    } else {
+        imageSide.classList.remove('zoomed');
+    }
+}
+
+function toggleEditMode() {
+    const form = document.getElementById('editForm');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+document.addEventListener('keydown', (e) => {
+    if (document.getElementById('imageModal').style.display === 'block') {
+        switch(e.key) {
+            case 'ArrowLeft': changeImage(-1); break;
+            case 'ArrowRight': changeImage(1); break;
+            case 'Escape': closeModal(); break;
+        }
+    }
+});
+
+document.getElementById('imageModal').addEventListener('click', (e) => {
+    if (e.target.id === 'imageModal') closeModal();
+});
+
+const imageSide = document.getElementById('imageSide');
+imageSide.addEventListener('mousedown', (e) => {
+    if (!isZoomed) return;
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    scrollLeft = imageSide.scrollLeft;
+    scrollTop = imageSide.scrollTop;
+    imageSide.style.cursor = 'grabbing';
+    e.preventDefault();
+});
+
+document.addEventListener('mousemove', (e) => {
+    if (!isDragging || !isZoomed) return;
+    const x = e.clientX - startX;
+    const y = e.clientY - startY;
+    imageSide.scrollLeft = scrollLeft - x;
+    imageSide.scrollTop = scrollTop - y;
+});
+
+document.addEventListener('mouseup', () => {
+    if (isDragging) {
+        isDragging = false;
+        if (isZoomed) imageSide.style.cursor = 'grab';
+    }
+});
+
+
+async function loadMoreImages() {
+    console.log('🔥 Load More clicked!');
+    
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    const loading = document.getElementById('loading');
+    const galleryGrid = document.getElementById('galleryGrid');
+    
+    if (!loadMoreBtn) {
+        console.error('❌ Load More button not found!');
+        return;
+    }
+    
+    const url = new URL(window.location);
+    let nextPage = parseInt(loadMoreBtn.dataset.nextPage) || 
+                   (parseInt(url.searchParams.get('page') || '1') + 1);
+    
+    console.log('📄 Fetching page:', nextPage);
+    
+    url.searchParams.set('page', nextPage);
+    
+    loadMoreBtn.style.display = 'none';
+    loading.style.display = 'block';
+    
+    try {
+        const response = await fetch(url.toString(), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        
+        const data = await response.json();
+        console.log('📦 Images loaded:', data.images?.length || 0);
+        
+        if (data.images && data.images.length > 0) {
+            data.images.forEach(img => {
+                const galleryItem = createGalleryItem(img);
+                galleryGrid.appendChild(galleryItem);
+            });
+            
+            window.allImages = window.allImages.concat(data.images);
+            
+            if (data.next_page) {
+                loadMoreBtn.dataset.nextPage = data.next_page;
+                loadMoreBtn.style.display = 'inline-block';
+            } else if (!data.has_more) {
+                loadMoreBtn.remove();
+            } else {
+                loadMoreBtn.dataset.nextPage = (nextPage + 1).toString();
+                loadMoreBtn.style.display = 'inline-block';
+            }
+        } else {
+            loadMoreBtn.remove();
+        }
+    } catch (error) {
+        console.error('💥 Error:', error);
+        loadMoreBtn.style.display = 'inline-block';
+    } finally {
+        loading.style.display = 'none';
+    }
+
+    if (data.total_posts !== undefined && data.total_images !== undefined) {
+        updateCounter(data.total_posts, data.total_images);
+}
+}
+function createGalleryItem(img) {
+    const galleryItem = document.createElement('div');
+    galleryItem.className = 'gallery-item';
+    galleryItem.onclick = () => openModal(img.id);
+    
+    const imageCount = img.image_path ? img.image_path.length : 0;
+    const firstImage = img.image_path && img.image_path.length > 0 ? img.image_path[0] : '';
+    
+    galleryItem.innerHTML = `
+        <div class="image-wrapper">
+            ${firstImage ? `
+                <img src="/static/uploads/${firstImage}" alt="${img.title}" loading="lazy">
+                ${imageCount > 1 ? `<span class="multi-indicator">${imageCount} images</span>` : ''}
+                <div class="image-overlay">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                </div>
+            ` : ''}
+        </div>
+        <div class="image-info">
+            <h3>${img.title}</h3>
+            ${img.description ? `<p>${img.description.length > 50 ? img.description.substring(0, 50) + '...' : img.description}</p>` : ''}
+            <span class="image-date">${img.created_at ? img.created_at.substring(0, 10) : ''}</span>
+        </div>
+    `;
+    
+    return galleryItem;
+}
+
+function createGalleryItem(img) {
+    const galleryItem = document.createElement('div');
+    galleryItem.className = 'gallery-item';
+    galleryItem.onclick = () => openModal(img.id); 
+    
+    const imageCount = img.image_path ? img.image_path.length : 0;
+    const firstImage = img.image_path && img.image_path.length > 0 ? img.image_path[0] : '';
+    
+    galleryItem.innerHTML = `
+        <div class="image-wrapper">
+            ${firstImage ? `
+                <img src="/static/uploads/${firstImage}" alt="${img.title}" loading="lazy">
+                ${imageCount > 1 ? `<span class="multi-indicator">${imageCount} images</span>` : ''}
+                <div class="image-overlay">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                </div>
+            ` : ''}
+        </div>
+        <div class="image-info">
+            <h3>${img.title}</h3>
+            ${img.description ? `<p>${img.description.length > 50 ? img.description.substring(0, 50) + '...' : img.description}</p>` : ''}
+            <span class="image-date">${img.created_at ? img.created_at.substring(0, 10) : ''}</span>
+        </div>
+    `;
+    
+    return galleryItem;
+}
+function updateCounter(posts, images) {
+    const statPosts = document.querySelector('.stat-posts');
+    const statImages = document.querySelector('.stat-images');
+    if (statPosts) statPosts.textContent = `${posts} Posts`;
+    if (statImages) statImages.textContent = `${images} Images`;
+}
+
+
+
+</script>
+{% endblock %}
