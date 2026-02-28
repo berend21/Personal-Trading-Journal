@@ -140,6 +140,9 @@
         
         <div class="modal-info-side">
             <h2 id="modalTitle"></h2>
+            <div class="modal-meta">
+                <span class="meta-date" id="modalDate"></span>
+            </div>
             <p id="modalDescription"></p>
             
             <div class="modal-actions">
@@ -402,6 +405,10 @@ function openModal(id) {
     currentImageIndex = 0;
     
     document.getElementById('modalTitle').textContent = img.title;
+    document.getElementById('modalDate').textContent = img.created_at ? 
+        new Date(img.created_at).toLocaleDateString('en-US', { 
+            year: 'numeric', month: 'short', day: 'numeric' 
+        }) : 'Unknown date';
     document.getElementById('modalDescription').innerHTML = (img.description || '').replace(/\n/g, '<br>');
     document.getElementById('deleteId').value = id;
     document.getElementById('editId').value = id;
