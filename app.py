@@ -114,13 +114,16 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'mp4', 'webm', 'ogg'}
 app.config["MAX_CONTENT_LENGTH"] = 512*1024*1024
 app.config['PERMANENT_SESSION_LIFETIME'] = 14400
 
+MAX_REASON_LEN    = 4000
+MAX_FEEDBACK_LEN  = 8000
 
 
-limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"])
+
+
 
 
 @app.route('/login', methods=['GET', 'POST'])
-@limiter.limit("5 per minute")
+
 def login():
     form = LoginForm()
     
@@ -515,8 +518,7 @@ init_db()
 def index():
     date_filter = request.args.get('date_filter', 'last30')
     search_query = request.args.get('search', '').strip()
-    
-    # Pagination (highly recommended!)
+
     page = request.args.get('page', 1, type=int)
     per_page = 30
     offset = (page - 1) * per_page
@@ -557,7 +559,6 @@ def index():
         conditions.append("open_time >= ?")
         params.append(start.strftime('%Y-%m-%d %H:%M:%S'))    
 
-    # Search
     if search_query:
         search_param = f"%{search_query}%"
         search_conditions = [
@@ -573,12 +574,9 @@ def index():
     parent_query = f"SELECT * FROM trades WHERE {where_clause} ORDER BY id DESC"
     parents = conn.execute(parent_query, params).fetchall()[:500]
 
-    # === Fetch partials for all parents in ONE query ===
     parent_ids = [p['id'] for p in parents]
     partials_by_parent = {}
 
-
-    # 2. Fetch ALL partials in ONE query (only if needed)
     if parent_ids:
         placeholders = ','.join(['?'] * len(parent_ids))
         partials_query = "SELECT *, parent_id FROM trades WHERE parent_id IN (" + placeholders + ")"
@@ -590,7 +588,6 @@ def index():
                 partials_by_parent[pid] = []
             partials_by_parent[pid].append(dict(row))
 
-    # Process parents and calculate RR
     processed_parents = []
     for parent_row in parents:
         parent = dict(parent_row)
@@ -1503,8 +1500,14 @@ def gallery():
 
     # Count total for pagination
     count_query = f"SELECT COUNT(*) as total FROM gallery {where_clause}"
-    total = conn.execute(count_query, search_params).fetchone()['total']
-    total_pages = math.ceil(total / per_page)
+    total_posts = conn.execute(count_query, search_params).fetchone()['total']
+    total_images_query = f"""
+        SELECT SUM(json_array_length(image_path)) as total_images
+        FROM gallery {where_clause}
+    """
+    total_images_result = conn.execute(total_images_query, search_params).fetchone()
+    total_images = total_images_result['total_images'] or 0 if total_images_result else 0
+    total_pages = math.ceil(total_posts / per_page)
 
     # Fetch current page
     query = f"""
@@ -1529,20 +1532,26 @@ def gallery():
             'created_at': row['created_at']
         })
 
-    # AJAX request for "Load More"
+
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({
             'images': images,
             'has_more': page < total_pages,
-            'next_page': page + 1 if page < total_pages else None
+            'next_page': page + 1 if page < total_pages else None,
+            'total_posts': total_posts,
+            'total_images': total_images
         })
 
+
     return render_template('gallery.html',
-                           images=images,
-                           page=page,
-                           total_pages=total_pages,
-                           has_more=page < total_pages,
-                           search=search)
+                        images=images,
+                        page=page,
+                        total_pages=total_pages,
+                        has_more=page < total_pages,
+                        search=search,
+                        total_posts=total_posts,      
+                        total_images=total_images    
+    )
 
 
 @app.route('/knowledge', methods=['GET', 'POST'])
