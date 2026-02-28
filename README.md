@@ -104,7 +104,8 @@ python app.py
 <img width="1918" height="916" alt="image" src="https://github.com/user-attachments/assets/62a2e930-7ec3-4099-b5e3-246f0294fba2" />
 <img width="1918" height="913" alt="image" src="https://github.com/user-attachments/assets/927c79d5-b8fe-4f98-b5e1-982559860e7a" />
 <img width="1918" height="915" alt="image" src="https://github.com/user-attachments/assets/97a26922-20be-4fb9-b64a-b7b7d0ed51c4" />
-<img width="1919" height="915" alt="image" src="https://github.com/user-attachments/assets/39f06c9a-3042-4703-b94f-0f24c44a3668" />
+<img width="1919" height="913" alt="image" src="https://github.com/user-attachments/assets/ddf8369a-9f3f-4b42-beb4-db52bac7e387" />
+
 <img width="1918" height="914" alt="image" src="https://github.com/user-attachments/assets/613ba506-d557-4336-a60d-31f3cd3446a4" />
 <img width="1918" height="917" alt="image" src="https://github.com/user-attachments/assets/63905487-02fc-41c9-9f38-24877080947b" />
 
