@@ -147,18 +147,7 @@ body.dark-theme {
     box-shadow: 0 8px 25px rgba(0,0,0,0.4);
 }
 
-.flash-message.show {
-    animation: flashIn 0.4s ease forwards, flashOut 0.6s 4.6s forwards;
-}
 
-@keyframes flashIn {
-    from { opacity: 0; transform: translateY(-30px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes flashOut {
-    to { opacity: 0; transform: translateY(-30px); }
-}
 
 @media (max-width: 768px) {
     .flash-messages-wrapper {
@@ -361,7 +350,7 @@ body.dark-theme tbody tr:hover {
 table{
     width:100%;
     max-width: 1300px;
-    border-collapse: seperate;
+    border-collapse: separate;
     font-size:0.97em;
     margin: 0 auto;
     margin-top: 50px;
@@ -594,7 +583,7 @@ body.dark-theme .title-divider {
 .navbar-divider-user {
     width: 100%;
     border: none;
-    margin-top: 450px;
+    margin-top: auto;
     border-top: 1px solid #495057;
     margin-bottom: 2rem;
 
@@ -1253,7 +1242,8 @@ button:active::after { animation: ripple 1s; opacity: 1; }
     .mobile-buttons {
         display: flex !important;
         align-items: center;
-        gap: 8px;
+        gap: 40px;
+        margin-right: 4px;
     }
     
     .theme-toggle-btn {
@@ -1282,6 +1272,10 @@ button:active::after { animation: ripple 1s; opacity: 1; }
         padding: 0;
         cursor: pointer;
         border-radius: 8px;
+        flex-shrink: 0;
+        margin: 0;
+        align-self: flex-start;
+        margin-top: -10px;
     }
     
     .navbar-toggle:hover,
@@ -1342,78 +1336,129 @@ button:active::after { animation: ripple 1s; opacity: 1; }
     }
 }
 
+/* ========================================
+   MOBILE TABLE → PERFECT BLOCKS (REPLACE)
+   ======================================== */
 @media (max-width: 768px) {
-
-    table.responsive {
-        display: block;
-        border: none;
-        box-shadow: none;
-        background: transparent;
+    /* FORCE ALL TABLES to blocks - bulletproof */
+    table,
+    table#trades-table,
+    table.dataTable,
+    .dataTables_wrapper table {
+        display: block !important;
+        width: 100% !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        overflow: visible !important;
+        border-spacing: 0 !important;
     }
     
-    table.responsive thead {
-        display: none;
+    table thead,
+    table thead tr,
+    table thead th {
+        display: none !important;
     }
     
-    table.responsive tbody {
-        display: block;
+    table tbody {
+        display: block !important;
     }
     
-    table.responsive tr {
-        display: block;
-        margin-bottom: 1rem;
-        background: var(--bg-table);
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        padding: 1rem;
-        position: relative;
+    table tr {
+        display: block !important;
+        margin: 0 0 1.5rem 0 !important;
+        background: var(--bg-table) !important;
+        border-radius: 20px !important;
+        box-shadow: var(--shadow-medium) !important;
+        padding: 1.5rem 1.25rem !important;
+        border: 1px solid rgba(255,255,255,0.12) !important;
+        position: relative !important;
+        min-height: 140px !important;
+        transition: all 0.3s cubic-bezier(0.4,0,0.2,1) !important;
+        break-inside: avoid !important;
     }
     
-    table.responsive td {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.5rem 0;
-        border: none;
-        border-bottom: 1px solid #eee;
-        text-align: left;
-        min-height: 40px;
-        align-items: center;
+    table tr:hover,
+    table tr:active {
+        transform: translateY(-3px) !important;
+        box-shadow: var(--shadow-large) !important;
+        background: linear-gradient(135deg, var(--bg-hover), rgba(4,168,200,0.15)) !important;
     }
     
-    table.responsive td:last-child {
-        border-bottom: none;
+    table td {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 1rem 0 !important;
+        border: none !important;
+        border-bottom: 1px solid rgba(0,0,0,0.08) !important;
+        min-height: 52px !important;
+        width: 100% !important;
+        position: relative !important;
     }
     
-    table.responsive td::before {
-        content: attr(data-label);
-        font-weight: 600;
-        color: #666;
-        flex: 0 0 40%;
-        margin-right: 1rem;
-    }
-
-    table.responsive td[data-label="Type"],
-    table.responsive td[data-label="Stop-Loss"],
-    table.responsive td[data-label="Take-Profit"] {
-        display: none;
-    }
-
-    table.responsive .action-cell {
-        padding: 1rem 0 0.5rem;
-        justify-content: center;
+    table td:last-child {
+        border-bottom: none !important;
+        padding-bottom: 0 !important;
     }
     
-    table.responsive .action-btns {
-        display: flex;
-        gap: 1rem;
-        width: 100%;
-        justify-content: center;
+    /* Label + Value system */
+    table td:not(.action-cell)::before {
+        content: attr(data-label) ": " !important;
+        font-weight: 700 !important;
+        color: var(--text-main) !important;
+        flex: 0 0 48% !important;
+        font-size: 0.95em !important;
+        padding-right: 1rem !important;
+        text-align: left !important;
     }
     
-    .edit-btn, .delete-btn, .partial-btn {
-        padding: 10px 20px;
-        font-size: 1rem;
-        min-width: 80px;
+    table td:not(.action-cell)::after {
+        content: attr(data-value) !important;
+        flex: 1 !important;
+        text-align: right !important;
+        font-weight: 500 !important;
+        color: inherit !important;
+        word-break: break-word !important;
+    }
+    
+    /* Action buttons - center full width */
+    table .action-cell,
+    table td:last-child {
+        justify-content: center !important;
+        gap: 1rem !important;
+        flex-direction: row !important;
+        padding: 1.25rem 0 0 !important;
+        min-height: 60px !important;
+    }
+    
+    table .action-cell button {
+        flex: 1 !important;
+        min-width: 90px !important;
+        padding: 12px 20px !important;
+        font-size: 1rem !important;
+        border-radius: 12px !important;
+    }
+    
+    /* Hide low-priority columns */
+    table td[data-label="Type"],
+    table td[data-label*="Stop"],
+    table td[data-label*="Take"] {
+        display: none !important;
+    }
+    
+    /* DARK THEME */
+    body.dark-theme table tr {
+        background: #23272b !important;
+        border-color: rgba(255,255,255,0.08) !important;
+    }
+    
+    body.dark-theme table td {
+        border-bottom-color: #3a4047 !important;
+    }
+    
+    body.dark-theme table td::before {
+        color: #e0e0e0 !important;
     }
 }
 
@@ -1425,6 +1470,7 @@ button:active::after { animation: ripple 1s; opacity: 1; }
     }
     
     .top-bar {
+        backdrop-filter:none;
         flex-direction: column;
         padding: 1rem;
         gap: 1rem;
