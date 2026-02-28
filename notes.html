@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+{% block title %}Notes - STS{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='notes.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="keep-container">
+    <h1 class="page-title">Notes</h1>
+
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Search notes..." title="Type to filter by title or content" oninput="filterNotes()">
+        <i class="fas fa-search search-icon"></i>
+    </div>
+
+    <div class="new-note" id="newNote">
+        <input type="text" id="newTitle" placeholder="Title (optional)" title="Add a title">
+        <textarea id="newContent" placeholder="Take a note..." title="Write your note here"></textarea>
+        <div class="new-note-actions">
+            <select id="newColor" title="Choose color">
+                <option value="#fff475">Yellow</option>
+                <option value="#fbbc04">Orange</option>
+                <option value="#ccff90">Green</option>
+                <option value="#a7ffeb">Teal</option>
+                <option value="#cbf0f8">Blue</option>
+                <option value="#aecbfa">Dark Blue</option>
+                <option value="#fdcfe8">Pink</option>
+                <option value="#e6c9a8">Brown</option>
+                <option value="#e8eaed">Gray</option>
+                <option value="#ffffff">White</option>
+            </select>
+            <button onclick="createNote()" title="Create note"><i class="fas fa-plus"></i> Add</button>
+            <button onclick="closeNewNote()" title="Close"><i class="fas fa-times"></i> Close</button>
+        </div>
+    </div>
+
+    <div id="pinnedSection" class="notes-section">
+        <h2><i class="fas fa-thumbtack"></i> Pinned</h2>
+        <div class="notes-masonry">
+            {% for note in pinned_notes %}
+            <div class="note-card" data-id="{{ note.id }}" data-title="{{ note.title|lower }}" data-content="{{ note.content|lower }}" data-color="{{ note.color }}" style="background-color: {{ note.color }};">
+                <h3>{{ note.title or '' }}</h3>
+                <p>{{ note.content }}</p>
+                <div class="note-actions">
+                    <form method="POST" action="{{ url_for('notes') }}" title="Pin/Unpin">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="pin">
+                        <input type="hidden" name="id" value="{{ note.id }}">
+                        <input type="hidden" name="pinned" value="{{ note.pinned }}">
+                        <button type="submit" class="pin-btn {% if note.pinned %}pinned{% endif %}"><i class="fas fa-thumbtack"></i></button>
+                    </form>
+                    <button class="view-btn" onclick="openViewModal({{ note.id }})" title="View"><i class="fas fa-eye"></i></button>
+                    <button class="edit-btn" onclick="openEditModal({{ note.id }})" title="Edit"><i class="fas fa-edit"></i></button>
+                    <form method="POST" action="{{ url_for('notes') }}" style="display:inline;" onsubmit="return confirm('Delete this note?');" title="Delete">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="id" value="{{ note.id }}">
+                        <button type="submit" class="delete-btn"><i class="fas fa-trash"></i></button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div id="othersSection" class="notes-section">
+        <h2>Others</h2>
+        <div class="notes-masonry">
+            {% for note in other_notes %}
+            <div class="note-card" data-id="{{ note.id }}" data-title="{{ note.title|lower }}" data-content="{{ note.content|lower }}" data-color="{{ note.color }}" style="background-color: {{ note.color }};">
+                <h3>{{ note.title or '' }}</h3>
+                <p>{{ note.content }}</p>
+                <div class="note-actions">
+                    <form method="POST" action="{{ url_for('notes') }}" title="Pin/Unpin">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="pin">
+                        <input type="hidden" name="id" value="{{ note.id }}">
+                        <input type="hidden" name="pinned" value="{{ note.pinned }}">
+                        <button type="submit" class="pin-btn {% if note.pinned %}pinned{% endif %}"><i class="fas fa-thumbtack"></i></button>
+                    </form>
+                    <button class="view-btn" onclick="openViewModal({{ note.id }})" title="View"><i class="fas fa-eye"></i></button>
+                    <button class="edit-btn" onclick="openEditModal({{ note.id }})" title="Edit"><i class="fas fa-edit"></i></button>
+                    <form method="POST" action="{{ url_for('notes') }}" style="display:inline;" onsubmit="return confirm('Delete this note?');" title="Delete">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="id" value="{{ note.id }}">
+                        <button type="submit" class="delete-btn"><i class="fas fa-trash"></i></button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div id="noResults" class="empty-message" style="display: none;">
+        <i class="fas fa-search" style="font-size: 48px; color: #4285f4;"></i>
+        <p>No notes match your search. Try a different keyword!</p>
+    </div>
+
+    {% if not pinned_notes and not other_notes %}
+    <div class="empty-message">
+        <i class="fas fa-lightbulb" style="font-size: 48px; color: #4285f4;"></i>
+        <p>No notes yet. Use the box above to create your first one!</p>
+    </div>
+    {% endif %}
+</div>
+
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeEditModal()" title="Close">&times;</span>
+        <form method="POST" action="{{ url_for('notes') }}" >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" id="edit_id" name="id">
+            <input type="text" id="edit_title" name="title" placeholder="Title (optional)">
+            <textarea id="edit_content" name="content" placeholder="Content" required></textarea>
+            <select id="edit_color" name="color">
+                <option value="#fff475">Yellow</option>
+                <option value="#fbbc04">Orange</option>
+                <option value="#ccff90">Green</option>
+                <option value="#a7ffeb">Teal</option>
+                <option value="#cbf0f8">Blue</option>
+                <option value="#aecbfa">Dark Blue</option>
+                <option value="#fdcfe8">Pink</option>
+                <option value="#e6c9a8">Brown</option>
+                <option value="#e8eaed">Gray</option>
+                <option value="#ffffff">White</option>
+            </select>
+            <button type="submit" title="Save changes">Save</button>
+        </form>
+    </div>
+</div>
+
+<div id="viewModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeViewModal()" title="Close">&times;</span>
+        <h3 id="view_title"></h3>
+        <p id="view_content"></p>
+        <img id="view_image" src="" alt="Note Image" style="display: none; max-width: 100%; border-radius: 4px; margin-top: 8px;">
+    </div>
+</div>
+
+<script>
+const csrfToken = '{{ csrf_token() }}'; 
+
+function filterNotes() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const allNotes = document.querySelectorAll('.note-card');
+    const noResults = document.getElementById('noResults');
+    let visibleCount = 0;
+    allNotes.forEach(note => {
+        const title = note.dataset.title || '';
+        const content = note.dataset.content || '';
+        if (title.includes(searchTerm) || content.includes(searchTerm)) {
+            note.style.display = 'block';
+            note.classList.add('fade-in');
+            visibleCount++;
+        } else {
+            note.style.display = 'none';
+        }
+    });
+    const pinnedSection = document.getElementById('pinnedSection');
+    const othersSection = document.getElementById('othersSection');
+    pinnedSection.style.display = (Array.from(pinnedSection.querySelectorAll('.note-card')).some(n => n.style.display !== 'none')) ? 'block' : 'none';
+    othersSection.style.display = (Array.from(othersSection.querySelectorAll('.note-card')).some(n => n.style.display !== 'none')) ? 'block' : 'none';
+    noResults.style.display = (visibleCount === 0 && searchTerm) ? 'block' : 'none';
+}
+
+document.getElementById('newContent').addEventListener('focus', expandNewNote);
+document.getElementById('newTitle').addEventListener('focus', expandNewNote);
+
+function expandNewNote() {
+    document.querySelector('.new-note-actions').style.display = 'flex';
+    document.getElementById('newNote').classList.add('expanded');
+}
+
+function closeNewNote() {
+    document.querySelector('.new-note-actions').style.display = 'none';
+    document.getElementById('newNote').classList.remove('expanded');
+    document.getElementById('newTitle').value = '';
+    document.getElementById('newContent').value = '';
+}
+
+function createNote() {
+    const title = document.getElementById('newTitle').value.trim();
+    const content = document.getElementById('newContent').value.trim();
+    const color = document.getElementById('newColor').value;
+    if (!content) {
+        alert('Please add some content to your note!');
+        return;
+    }
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("notes") }}';
+    form.innerHTML = `
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="create">
+        <input type="hidden" name="title" value="${title}">
+        <input type="hidden" name="content" value="${content}">
+        <input type="hidden" name="color" value="${color}">
+    `;
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function openEditModal(noteId) {
+    const note = document.querySelector(`.note-card[data-id="${noteId}"]`);
+    if (note) {
+        document.getElementById('edit_id').value = noteId;
+        document.getElementById('edit_title').value = note.querySelector('h3').textContent.trim() || '';
+        document.getElementById('edit_content').value = note.querySelector('p').textContent.trim() || '';
+        const currentColor = note.dataset.color || '#fff475';
+        document.getElementById('edit_color').value = currentColor;
+        const modalContent = document.getElementById('editModal').querySelector('.modal-content');
+        modalContent.style.backgroundColor = currentColor;
+        document.getElementById('editModal').style.display = 'flex'; 
+    }
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+}
+
+function openViewModal(noteId) {
+    const note = document.querySelector(`.note-card[data-id="${noteId}"]`);
+    if (note) {
+        document.getElementById('view_title').textContent = note.querySelector('h3').textContent.trim() || '';
+        document.getElementById('view_content').textContent = note.querySelector('p').textContent.trim() || '';
+        const modalContent = document.getElementById('viewModal').querySelector('.modal-content');
+        modalContent.style.backgroundColor = note.dataset.color || '#fff'; 
+
+        const image = note.querySelector('img');
+        const viewImage = document.getElementById('view_image');
+        if (image) {
+            viewImage.src = image.src;
+            viewImage.style.display = 'block';
+        } else {
+            viewImage.style.display = 'none';
+        }
+        document.getElementById('viewModal').style.display = 'flex';
+    }
+}
+
+function closeViewModal() {
+    document.getElementById('viewModal').style.display = 'none';
+}
+
+window.onclick = function(event) {
+    if (event.target == document.getElementById('editModal')) {
+        closeEditModal();
+    } else if (event.target == document.getElementById('viewModal')) {
+        closeViewModal();
+    }
+}
+
+document.getElementById('newContent').addEventListener('paste', function(e) {
+    const items = e.clipboardData.items;
+    for (let item of items) {
+        if (item.type.indexOf('image') !== -1) {
+            const blob = item.getAsFile();
+            console.log('Image pasted:', blob);
+
+        }
+    }
+});
+
+function copyImageToClipboard() {
+    const img = document.getElementById('view_image');
+    if (img.src) {
+        fetch(img.src)
+            .then(res => res.blob())
+            .then(blob => {
+                navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })])
+                    .then(() => alert('Image copied to clipboard!'))
+                    .catch(err => alert('Failed to copy: ' + err));
+            });
+    } else {
+        alert('No image to copy!');
+    }
+}
+</script>
+{% endblock %}
