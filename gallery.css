@@ -5,24 +5,28 @@ html { font-family: 'Inter', system-ui, sans-serif; }
 }
 
 :root {
-  --bg: #fafafa;
-  --card: rgba(255, 255, 255, 0.75);
+  --bg: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  --card: rgba(255, 255, 255, 0.92);
   --text: #1a1a1a;
-  --primary: #6366f1;
-  --border: rgba(255, 255, 255, 0.3);
+  --primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --accent: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --success: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --border: rgba(255, 255, 255, 0.25);
+  --shadow-light: 0 8px 32px rgba(31, 38, 135, 0.15);
+  --shadow-hover: 0 20px 60px rgba(31, 38, 135, 0.25);
 }
 
 
 .gallery-container {
-    max-width: 1400px;
+    max-width: 1450px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 10px 24px 80px 24px;
 }
 
 .gallery-header-alt {
     position: relative;
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 5px;
 }
 
 .gallery-header-alt h1 {
@@ -327,6 +331,7 @@ html { font-family: 'Inter', system-ui, sans-serif; }
     box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
+    position: relative;
 }
 
 .gallery-item:hover {
@@ -334,6 +339,11 @@ html { font-family: 'Inter', system-ui, sans-serif; }
     box-shadow: 0 20px 40px rgba(0,0,0,0.18);
 }
 
+
+
+.gallery-item:hover .image-wrapper::before {
+    opacity: 1;
+}
 .image-wrapper::before {
     content: '';
     position: absolute;
@@ -342,10 +352,6 @@ html { font-family: 'Inter', system-ui, sans-serif; }
     opacity: 0;
     transition: opacity 0.3s;
     z-index: 1;
-}
-
-.gallery-item:hover .image-wrapper::before {
-    opacity: 1;
 }
 
 .image-wrapper {
@@ -627,28 +633,39 @@ html { font-family: 'Inter', system-ui, sans-serif; }
         object-fit: contain;
     }
 .carousel-prev, .carousel-next {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    background: rgba(0,0,0,0.6);
-    color: white;
-    border: none;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 24px;
-    z-index: 10;
-    display: none; 
-    transition: all 0.2s ease;
+    position: absolute !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    background: rgba(0, 0, 0, 0.7) !important;
+    color: white !important;
+    border: none !important;
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 50% !important;
+    cursor: pointer !important;
+    font-size: 18px !important;
+    font-weight: bold !important;
+    z-index: 100 !important; /* Higher z-index */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+    opacity: 0.8 !important;
 }
 
 .carousel-prev:hover, .carousel-next:hover {
-        background: rgba(0,0,0,0.9);
-        transform: translateY(-50%) scale(1.1);
-    }
-.carousel-prev { left: 10px; }
-.carousel-next { right: 10px; }
+    background: rgba(0,0,0,0.9);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.carousel-prev { left: 20px; }
+.carousel-next { right: 20px; }
+
+.carousel-prev[style*="display: none"],
+.carousel-next[style*="display: none"] {
+    display: none !important;
+}
 
 @media (max-width: 768px) {
     .modal-content {
