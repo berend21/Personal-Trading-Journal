@@ -15,12 +15,13 @@
 
     {% block extra_head %}{% endblock %}
 </head>
+
 <body class="{% if session.get('theme', 'light') == 'dark' %}dark-theme{% endif %}">
     <div class="container">
         <nav class="navbar" role="navigation" aria-label="Main navigation">
             <div class="navbar-top">
                 <a href="{{ url_for('index') }}" class="brand-link" aria-label="Smarter Trading Systems Home">
-                    <img src="{{ url_for('static', filename='logo.webp') }}" alt="STS Logo" class="logo" loading="lazy"> 
+                    <img src="{{ url_for('static', filename='logo.webp') }}" alt="STS Logo" class="logo" loading="eager"> 
                     <span class="site-name" aria-hidden="true">
                         <span>Smarter</span>
                         <span>Trading</span>
@@ -55,7 +56,7 @@
                         <img src="{{ url_for('static', filename=icon) }}" 
                              alt="{{ text }}" 
                              class="nav-icon" 
-                             loading="lazy" 
+                             loading="eager" 
                              width="24" height="24">
                         <span class="nav-text">{{ text }}</span>
                     </a>
@@ -74,16 +75,24 @@
             </div>
             <hr class="navbar-divider-user" aria-hidden="true">
             {% if session.logged_in %}
-            <div class="nav-user" role="group" aria-label="User account">
-                <span class="user-icon" aria-hidden="true">👤</span> 
-                <div class="user-info">
-                    <span class="username">{{ session.username }}</span>
-                    <a href="{{ url_for('logout') }}" class="logout-btn" rel="nofollow noopener">
-                        <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Logout
+                <div class="nav-user" role="group" aria-label="User account">
+                    <div class="user-header">
+                        <div class="user-avatar">
+                            <span class="user-initial">{{ session.username[0].upper() }}</span>
+                        </div>
+                        <div class="user-details">
+                            <div class="username">{{ session.username }}</div>
+                            <div class="user-status">
+                                <span class="status-dot"></span>
+                                <span class="status-text">Active</span>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('logout') }}" class="logout-btn" title="Sign Out">
+                        <i class="fas fa-sign-out-alt"></i>
                     </a>
                 </div>
-            </div>
-            {% endif %}
+                {% endif %}
         </nav>
 
         <main class="main-content" id="main-content">
