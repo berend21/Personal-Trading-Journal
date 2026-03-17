@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='todo.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+
+
+
+{% endblock %}
+
+{% block title %}To Do{% endblock %} 
+{% block content %}
+<div class="todo-lists-container">
+  <div class="todo-list">
+    <h2>Tickers to Watch</h2>
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="add">
+      <input type="hidden" name="list_type" value="ticker">
+      <input type="text" name="content" placeholder="Add ticker..." required>
+      <button type="submit">Add</button>
+    </form>
+    <ul id="ticker-list">
+  {% for item in tickers %}
+    <li data-id="{{ item['id'] }}" class="{% if item['completed'] %}completed{% endif %}">
+      <form method="post" class="toggle-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="toggle">
+        <input type="hidden" name="todo_id" value="{{ item['id'] }}">
+        <input type="checkbox" onchange="this.form.submit()" {% if item['completed'] %}checked{% endif %}>
+      </form>
+
+      <span class="editable">{{ item['content'] }}</span>
+
+      <form method="post" class="edit-form" style="display:none;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="edit">
+        <input type="hidden" name="todo_id" value="{{ item['id'] }}">
+        <input type="text" name="content" value="{{ item['content'] }}" class="edit-input">
+      </form>
+
+      <form method="post" class="delete-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="delete">
+        <input type="hidden" name="todo_id" value="{{ item['id'] }}">
+        <button type="submit" class="delete-btn">🗑</button>
+      </form>
+    </li>
+  {% endfor %}
+</ul>
+  </div>
+  <div class="todo-list">
+    <h2>To Do</h2>
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="add">
+      <input type="hidden" name="list_type" value="todo">
+      <input type="text" name="content" placeholder="Add task..." required>
+      <button type="submit">Add</button>
+    </form>
+    <ul id="todo-list">
+  {% for item in todos %}
+    <li data-id="{{ item['id'] }}" class="{% if item['completed'] %}completed{% endif %}">
+      <form method="post" class="toggle-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="toggle">
+        <input type="hidden" name="todo_id" value="{{ item['id'] }}">
+        <input type="checkbox" onchange="this.form.submit()" {% if item['completed'] %}checked{% endif %}>
+      </form>
+
+      <span class="editable">{{ item['content'] }}</span>
+
+      <form method="post" class="edit-form" style="display:none;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="edit">
+        <input type="hidden" name="todo_id" value="{{ item['id'] }}">
+        <input type="text" name="content" value="{{ item['content'] }}" class="edit-input">
+      </form>
+
+      <form method="post" class="delete-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="delete">
+        <input type="hidden" name="todo_id" value="{{ item['id'] }}">
+        <button type="submit" class="delete-btn">🗑</button>
+      </form>
+    </li>
+  {% endfor %}
+</ul>
+  </div>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".editable").forEach(span => {
+    span.addEventListener("click", () => {
+      const li = span.closest("li");
+      span.style.display = "none";
+      const editForm = li.querySelector(".edit-form");
+      editForm.style.display = "inline";
+      const input = editForm.querySelector(".edit-input");
+      input.focus();
+      
+      // Save on Enter
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          editForm.submit();
+        }
+      });
+
+      // Cancel on Blur (optional)
+      input.addEventListener("blur", () => {
+        editForm.style.display = "none";
+        span.style.display = "inline";
+      });
+    });
+  });
+});
+
+new Sortable(document.getElementById('ticker-list'), {
+    animation: 150,
+    ghostClass: 'sortable-ghost',
+    onEnd: function(evt) {
+        const items = Array.from(evt.to.children).map((li, i) => ({
+            id: li.dataset.id,
+            position: i
+        }));
+        fetch('/reorder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items, list_type: 'ticker' })
+        });
+    }
+});
+
+new Sortable(document.getElementById('todo-list'), {
+    animation: 200,
+    ghostClass: 'sortable-ghost',
+    filter: '.completed',  // Don't drag completed items
+    onEnd: function(evt) {
+        const items = Array.from(evt.to.children)
+            .filter(li => !li.classList.contains('completed'))
+            .map((li, i) => ({ id: li.dataset.id, position: i }));
+        fetch('/reorder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items, list_type: 'todo' })  // ✅ Fixed!
+        }).catch(console.error);
+    }
+});
+</script>
+{% endblock %}
