@@ -135,7 +135,7 @@ new Sortable(document.getElementById('ticker-list'), {
 new Sortable(document.getElementById('todo-list'), {
     animation: 200,
     ghostClass: 'sortable-ghost',
-    filter: '.completed',  // Don't drag completed items
+    filter: '.completed',  
     onEnd: function(evt) {
         const items = Array.from(evt.to.children)
             .filter(li => !li.classList.contains('completed'))
@@ -143,7 +143,7 @@ new Sortable(document.getElementById('todo-list'), {
         fetch('/reorder', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ items, list_type: 'todo' })  // ✅ Fixed!
+            body: JSON.stringify({ items, list_type: 'todo' }) 
         }).catch(console.error);
     }
 });
