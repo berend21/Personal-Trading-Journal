@@ -53,7 +53,6 @@
             const eyeIcon = document.getElementById('eyeIcon');
             if (passwordInput.type === 'password') {
                 passwordInput.type = 'text';
-                // Eye with slash
                 eyeIcon.innerHTML = `
                     <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/>
                     <circle cx="12" cy="12" r="3"/>
@@ -61,18 +60,16 @@
                 `;
             } else {
                 passwordInput.type = 'password';
-                // Normal eye
                 eyeIcon.innerHTML = `
                     <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/>
                     <circle cx="12" cy="12" r="3"/>
                 `;
             }
         }
-        // Function to simulate a flash message on "Forgot password?" click
+
         function showForgotFlash() {
             const flashContainer = document.getElementById('flash-container');
             flashContainer.innerHTML = '<div class="flash-message success">Haha de lul!!!</div>';
-            // Optional: Auto-hide after 5 seconds
             setTimeout(() => {
                 flashContainer.innerHTML = '';
             }, 5000);
