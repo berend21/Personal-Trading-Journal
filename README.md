@@ -96,7 +96,7 @@ python app.py
 ```
 
 
-<img width="1915" height="913" alt="image" src="https://github.com/user-attachments/assets/e657e68d-a366-4a22-a4c5-bce4794dd823" />
+<img width="1918" height="916" alt="image" src="https://github.com/user-attachments/assets/d5f25466-f339-44b7-b833-8a21950e4df6" />
 <img width="1919" height="915" alt="image" src="https://github.com/user-attachments/assets/47bfbb0f-fe26-4140-b3dd-9ba7e1468b89" />
 <img width="1917" height="917" alt="image" src="https://github.com/user-attachments/assets/fe0e1b4b-84b3-4c8c-a085-1259fbfde543" />
 <img width="1918" height="913" alt="image" src="https://github.com/user-attachments/assets/d485bff7-e5b1-4dc6-a9c9-e3b730aea2d3" />
