@@ -28,15 +28,24 @@
 
 
 
-    <div class="search-section">
-        <div class="search-wrapper">
-            <input type="text" placeholder="Search by title or keywords..." value="{{ search }}" id="searchInput" autocomplete="off">
-            <span class="search-icon" id="searchIcon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-            </span>
+    <div class="controls-section">
+        <div class="sort-section">
+            <label for="sortSelect" class="sort-label">Sort:</label>
+            <select id="sortSelect" class="sort-select">
+                <option value="desc" {{ 'selected' if sort_order == 'desc' else '' }}>Newest</option>
+                <option value="asc" {{ 'selected' if sort_order == 'asc' else '' }}>Oldest</option>
+            </select>
+        </div>
+        <div class="search-section">
+            <div class="search-wrapper">
+                <input type="text" placeholder="Search by title or keywords..." value="{{ search }}" id="searchInput" autocomplete="off">
+                <span class="search-icon" id="searchIcon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </span>
+            </div>
         </div>
     </div>
     <div class="upload-section" id="uploadSection">
@@ -255,6 +264,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// 🔥 SORT SELECTOR FUNCTIONALITY
+const sortSelect = document.getElementById('sortSelect');
+if (sortSelect) {
+    sortSelect.addEventListener('change', function() {
+        // Update URL with new sort order, reset to page 1
+        const url = new URL(window.location);
+        url.searchParams.set('sort', this.value);
+        url.searchParams.set('page', '1');
+        window.location.href = url.toString();
+    });
+}
+
 function toggleUploadForm() {
     const section = document.getElementById('uploadSection');
     const isVisible = section.style.display === 'block';
@@ -394,7 +415,19 @@ function resetUploadForm() {
 }
 
 function findImage(id) {
-    return window.allImages.find(img => img.id == id);
+    // First try to find in window.allImages
+    let img = window.allImages.find(img => img.id == id);
+    
+    // If not found, try to find the gallery item and extract data
+    if (!img) {
+        const galleryItem = document.querySelector(`[data-post-id="${id}"], .gallery-item[onclick*="openModal(${id})"]`);
+        if (galleryItem) {
+            // Fallback: you might need to store more data or refetch
+            console.warn('Image data not found in cache for ID:', id);
+        }
+    }
+    
+    return img;
 }
 
 function openModal(id) {
@@ -431,9 +464,10 @@ function updateCarousel() {
     const prevBtn = document.querySelector('.carousel-prev');
     const nextBtn = document.querySelector('.carousel-next');
     
+    // Always show buttons if there are multiple images
     if (paths.length > 1) {
-        prevBtn.style.display = 'block';
-        nextBtn.style.display = 'block';
+        prevBtn.style.display = 'flex';
+        nextBtn.style.display = 'flex';
     } else {
         prevBtn.style.display = 'none';
         nextBtn.style.display = 'none';
@@ -468,6 +502,7 @@ function changeImage(direction) {
     if (!currentPost) return;
     const paths = currentPost.image_path || [];
     if (paths.length <= 1) return;
+    
     currentImageIndex = (currentImageIndex + direction + paths.length) % paths.length;
     updateCarousel();
     resetZoom();
@@ -562,14 +597,14 @@ async function loadMoreImages() {
     const loading = document.getElementById('loading');
     const galleryGrid = document.getElementById('galleryGrid');
     
-    if (!loadMoreBtn) {
-        console.error('❌ Load More button not found!');
+    if (!loadMoreBtn || !galleryGrid) {
+        console.error('❌ Required elements not found!');
         return;
     }
     
     const url = new URL(window.location);
-    let nextPage = parseInt(loadMoreBtn.dataset.nextPage) || 
-                   (parseInt(url.searchParams.get('page') || '1') + 1);
+    let currentPage = parseInt(url.searchParams.get('page') || '1');
+    let nextPage = currentPage + 1;
     
     console.log('📄 Fetching page:', nextPage);
     
@@ -583,10 +618,29 @@ async function loadMoreImages() {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         });
         
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
         console.log('📦 Images loaded:', data.images?.length || 0);
         
         if (data.images && data.images.length > 0) {
+            // Preload images for better performance
+            const imagePromises = data.images.map(img => {
+                if (img.image_path && img.image_path.length > 0) {
+                    return new Promise((resolve) => {
+                        const imgElement = new Image();
+                        imgElement.onload = imgElement.onerror = resolve;
+                        imgElement.src = `/static/uploads/${img.image_path[0]}`;
+                    });
+                }
+                return Promise.resolve();
+            });
+            
+            // Wait for images to start loading
+            await Promise.all(imagePromises);
+            
             data.images.forEach(img => {
                 const galleryItem = createGalleryItem(img);
                 galleryGrid.appendChild(galleryItem);
@@ -594,33 +648,32 @@ async function loadMoreImages() {
             
             window.allImages = window.allImages.concat(data.images);
             
-            if (data.next_page) {
-                loadMoreBtn.dataset.nextPage = data.next_page;
-                loadMoreBtn.style.display = 'inline-block';
-            } else if (!data.has_more) {
+            // Update counters if provided
+            if (data.total_posts !== undefined && data.total_images !== undefined) {
+                updateCounter(data.total_posts, data.total_images);
+            }
+            
+            if (!data.has_more) {
                 loadMoreBtn.remove();
             } else {
-                loadMoreBtn.dataset.nextPage = (nextPage + 1).toString();
+                loadMoreBtn.dataset.nextPage = nextPage.toString();
                 loadMoreBtn.style.display = 'inline-block';
             }
         } else {
             loadMoreBtn.remove();
         }
     } catch (error) {
-        console.error('💥 Error:', error);
+        console.error('💥 Error loading more images:', error);
         loadMoreBtn.style.display = 'inline-block';
     } finally {
         loading.style.display = 'none';
     }
+}
 
-    if (data.total_posts !== undefined && data.total_images !== undefined) {
-        updateCounter(data.total_posts, data.total_images);
-}
-}
 function createGalleryItem(img) {
     const galleryItem = document.createElement('div');
     galleryItem.className = 'gallery-item';
-    galleryItem.onclick = () => openModal(img.id);
+    galleryItem.dataset.postId = img.id; // Store ID as data attribute
     
     const imageCount = img.image_path ? img.image_path.length : 0;
     const firstImage = img.image_path && img.image_path.length > 0 ? img.image_path[0] : '';
@@ -628,7 +681,7 @@ function createGalleryItem(img) {
     galleryItem.innerHTML = `
         <div class="image-wrapper">
             ${firstImage ? `
-                <img src="/static/uploads/${firstImage}" alt="${img.title}" loading="lazy">
+                <img src="/static/uploads/${firstImage}" alt="${img.title || ''}" loading="lazy">
                 ${imageCount > 1 ? `<span class="multi-indicator">${imageCount} images</span>` : ''}
                 <div class="image-overlay">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -639,45 +692,22 @@ function createGalleryItem(img) {
             ` : ''}
         </div>
         <div class="image-info">
-            <h3>${img.title}</h3>
+            <h3>${img.title || ''}</h3>
             ${img.description ? `<p>${img.description.length > 50 ? img.description.substring(0, 50) + '...' : img.description}</p>` : ''}
             <span class="image-date">${img.created_at ? img.created_at.substring(0, 10) : ''}</span>
         </div>
     `;
+
+    galleryItem.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openModal(parseInt(this.dataset.postId));
+    });
     
     return galleryItem;
 }
 
-function createGalleryItem(img) {
-    const galleryItem = document.createElement('div');
-    galleryItem.className = 'gallery-item';
-    galleryItem.onclick = () => openModal(img.id); 
-    
-    const imageCount = img.image_path ? img.image_path.length : 0;
-    const firstImage = img.image_path && img.image_path.length > 0 ? img.image_path[0] : '';
-    
-    galleryItem.innerHTML = `
-        <div class="image-wrapper">
-            ${firstImage ? `
-                <img src="/static/uploads/${firstImage}" alt="${img.title}" loading="lazy">
-                ${imageCount > 1 ? `<span class="multi-indicator">${imageCount} images</span>` : ''}
-                <div class="image-overlay">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                        <circle cx="12" cy="12" r="3"></circle>
-                    </svg>
-                </div>
-            ` : ''}
-        </div>
-        <div class="image-info">
-            <h3>${img.title}</h3>
-            ${img.description ? `<p>${img.description.length > 50 ? img.description.substring(0, 50) + '...' : img.description}</p>` : ''}
-            <span class="image-date">${img.created_at ? img.created_at.substring(0, 10) : ''}</span>
-        </div>
-    `;
-    
-    return galleryItem;
-}
+
 function updateCounter(posts, images) {
     const statPosts = document.querySelector('.stat-posts');
     const statImages = document.querySelector('.stat-images');
