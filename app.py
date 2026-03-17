@@ -50,7 +50,8 @@ logging.basicConfig(handlers=[handler], level=logging.DEBUG)
 app.config['SESSION_COOKIE_SAMESITE'] = "Strict"
 app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True 
-PERMANENT_SESSION_LIFETIME = timedelta(hours=12)
+PERMANENT_SESSION_LIFETIME = timedelta(hours=24)
+app.config['PERMANENT_SESSION_LIFETIME'] = 86400
 app.config['WTF_CSRF_TIME_LIMIT'] = 86400
 class LoginForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
@@ -68,11 +69,18 @@ def inject_csrf_token():
 
 @app.errorhandler(CSRFError)
 def handle_csrf_error(e):
+    app.logger.warning(f"CSRF Error: {e.description}")
+    session.clear()
+
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest': 
-        return jsonify({'success': False, 'message': 'Invalid or missing CSRF token. Please refresh and try again.'}), 400
+        return jsonify({
+            'success': False, 
+            'message': 'Session expired. Please login again.',
+            'redirect': url_for('login', _external=True)
+        }), 401
     else:  
-        flash('Invalid or missing CSRF token. Please try again.', 'error')
-        return redirect(request.url), 400
+        flash('Session expired. Please login again.', 'error')
+        return redirect(url_for('login'))
     
 @app.after_request
 def add_security_headers(response):
@@ -112,7 +120,7 @@ os.makedirs(KNOWLEDGE_UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'mp4', 'webm', 'ogg'}
 
 app.config["MAX_CONTENT_LENGTH"] = 512*1024*1024
-app.config['PERMANENT_SESSION_LIFETIME'] = 14400
+
 
 MAX_REASON_LEN    = 4000
 MAX_FEEDBACK_LEN  = 8000
@@ -1413,13 +1421,12 @@ def gallery():
             
             if not title:
                 flash('Title is required', 'error')
-                 
                 return redirect(url_for('gallery'))  
             
             if not images or any(not allowed_file(img.filename) for img in images if img.filename):
                 flash('Invalid image file(s)', 'error')
-                 
                 return redirect(url_for('gallery')) 
+            
             image_paths = []
             for image in images:
                 if image.filename == '': continue
@@ -1431,7 +1438,6 @@ def gallery():
             
             if not image_paths:
                 flash('At least one image required', 'error')
-                 
                 return redirect(url_for('gallery')) 
             
             json_paths = json.dumps(image_paths)
@@ -1439,7 +1445,6 @@ def gallery():
                          (title, description, json_paths))
             conn.commit()
             flash('Post added successfully!', 'success')
-             
             return redirect(url_for('gallery'))
         
         elif action == 'edit':
@@ -1451,11 +1456,9 @@ def gallery():
                              (title, description, img_id))
                 conn.commit()
                 flash('Post updated successfully!', 'success')
-                 
                 return redirect(url_for('gallery'))
             else:
                 flash('Invalid edit data', 'error')
-                 
                 return redirect(url_for('gallery'))  
         
         elif action == 'delete':
@@ -1475,21 +1478,21 @@ def gallery():
                 conn.execute('DELETE FROM gallery WHERE id=?', (img_id,))
                 conn.commit()
                 flash('Post deleted successfully!', 'success')
-                 
                 return redirect(url_for('gallery'))
             else:
                 flash('Invalid delete request', 'error')
-                 
                 return redirect(url_for('gallery'))  
        
         flash('Invalid action', 'error')
-         
         return redirect(url_for('gallery'))
 
+    # 🔥 NEW SORTING LOGIC
     page = request.args.get('page', 1, type=int)
-    per_page = 24  # 4×6 grid looks perfect
-    offset = (page - 1) * per_page
     search = request.args.get('search', '').strip()
+    sort_order = request.args.get('sort', 'desc')  # 'desc' (newest) or 'asc' (oldest)
+    
+    per_page = 24
+    offset = (page - 1) * per_page
 
     where_clause = ""
     search_params = []
@@ -1501,21 +1504,28 @@ def gallery():
     # Count total for pagination
     count_query = f"SELECT COUNT(*) as total FROM gallery {where_clause}"
     total_posts = conn.execute(count_query, search_params).fetchone()['total']
+    
     total_images_query = f"""
-        SELECT SUM(json_array_length(image_path)) as total_images
+        SELECT COALESCE(SUM(json_array_length(image_path)), 0) as total_images
         FROM gallery {where_clause}
     """
     total_images_result = conn.execute(total_images_query, search_params).fetchone()
-    total_images = total_images_result['total_images'] or 0 if total_images_result else 0
+    total_images = total_images_result['total_images'] or 0
     total_pages = math.ceil(total_posts / per_page)
 
-    # Fetch current page
+    # 🔥 DYNAMIC SORTING ORDER
+    if sort_order == 'asc':
+        order_by = "ORDER BY created_at ASC"  # Oldest first
+    else:
+        order_by = "ORDER BY created_at DESC"  # Newest first (default)
+
+    # Fetch current page with dynamic sorting
     query = f"""
         SELECT * FROM gallery {where_clause}
-        ORDER BY created_at DESC
+        {order_by}
         LIMIT ? OFFSET ?
     """
-    all_params = search_params + [per_page, offset]  # This creates all_params
+    all_params = search_params + [per_page, offset]
     rows = conn.execute(query, all_params).fetchall()
 
     images = []
@@ -1532,7 +1542,6 @@ def gallery():
             'created_at': row['created_at']
         })
 
-
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({
             'images': images,
@@ -1542,13 +1551,13 @@ def gallery():
             'total_images': total_images
         })
 
-
     return render_template('gallery.html',
                         images=images,
                         page=page,
                         total_pages=total_pages,
                         has_more=page < total_pages,
                         search=search,
+                        sort_order=sort_order,  # 🔥 Pass to template
                         total_posts=total_posts,      
                         total_images=total_images    
     )
