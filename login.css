@@ -58,12 +58,12 @@ h2 {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    width: fit-content;         /* prevents full-width stretch */
+    width: fit-content;      
 }
 label {
-    font-size: 0.875rem; /* Small font like in screenshot */
+    font-size: 0.875rem; 
     font-weight: 500;
-    color: #666; /* Gray color like in screenshot */
+    color: #666; 
     display: block;
 }
 .flash-message {
@@ -153,7 +153,7 @@ form{
     background: #eaffea;
     color: #388e3c;
 }
-/* Make sure password input has extra right padding for the icon */
+
 .login-container input[type="text"],
 .login-container input[type="email"],
 .login-container input[type="password"] {
@@ -202,7 +202,7 @@ button[type="submit"].loading::after {
 .form-field {
     display: flex;
     flex-direction: column;
-    gap: 0.25em; /* Small gap between label and input */
+    gap: 0.25em; 
 }
 @keyframes spin {
     to { transform: rotate(360deg); }
@@ -216,17 +216,17 @@ input:valid:not(:focus):not(:placeholder-shown) {
 }
 @media (max-width: 480px) {
     body {
-        background-attachment: fixed; /* Prevent background scroll issues */
+        background-attachment: fixed; 
     }
     .login-container {
         width: 100%;
         min-height: 100vh;
         border-radius: 0;
         padding: 2rem 1.5rem;
-        backdrop-filter: blur(12px); /* Stronger blur on mobile */
-        background: rgba(255,255,255,0.85); /* More opaque */
+        backdrop-filter: blur(12px); 
+        background: rgba(255,255,255,0.85); 
         display: flex;
-        align-items: center; /* Center vertically */
+        align-items: center; 
     }
     .login-container h2 {
         font-size: 2em;
@@ -234,7 +234,7 @@ input:valid:not(:focus):not(:placeholder-shown) {
     input[type="email"],
     input[type="password"] {
         min-height: 52px;
-        font-size: 16px; /* Prevents zoom on iOS */
+        font-size: 16px; 
     }
     button[type="submit"] {
         min-height: 52px;
@@ -244,7 +244,7 @@ input:valid:not(:focus):not(:placeholder-shown) {
         font-size: 1.1em;
     }
     .toggle-password {
-        width: 44px; /* Minimum touch target size */
+        width: 44px; 
         height: 44px;
         right: 0;
         display: flex;
