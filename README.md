@@ -107,7 +107,8 @@ python app.py
 <img width="1919" height="913" alt="image" src="https://github.com/user-attachments/assets/ddf8369a-9f3f-4b42-beb4-db52bac7e387" />
 <img width="1917" height="909" alt="image" src="https://github.com/user-attachments/assets/accc817c-791a-41e6-9366-fa16e3128b6e" />
 <img width="1918" height="914" alt="image" src="https://github.com/user-attachments/assets/613ba506-d557-4336-a60d-31f3cd3446a4" />
-<img width="1918" height="915" alt="image" src="https://github.com/user-attachments/assets/35311f3e-5bb4-4934-9fb7-4678f365a40f" />
+<img width="1916" height="914" alt="image" src="https://github.com/user-attachments/assets/9a048b91-16eb-4ffa-a96c-5af73a33df29" />
+
 
 
 
