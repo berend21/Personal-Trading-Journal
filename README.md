@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**A comprehensive, self-hosted trading journal for serious traders**
+**A comprehensive, self-hosted trading journal for traders or investors**
 
 *Track trades, analyze performance, and improve your trading strategy*
 
