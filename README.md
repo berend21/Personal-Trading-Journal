@@ -218,8 +218,8 @@ Reliable Data => Useful Analytics => Better Review => Better Decisions
 # Login page
 <img width="1918" height="916" alt="image" src="https://github.com/user-attachments/assets/d5f25466-f339-44b7-b833-8a21950e4df6" />
 
-# Dashboard
-<img width="1919" height="915" alt="image" src="https://github.com/user-attachments/assets/47bfbb0f-fe26-4140-b3dd-9ba7e1468b89" />
+# Trade page
+<img width="1918" height="911" alt="Screenshot 2026-09-07 142747" src="https://github.com/user-attachments/assets/9b307c2e-6105-46c8-908b-4afac5b3aec8" />
 
 # Trade details
 <img width="1917" height="917" alt="image" src="https://github.com/user-attachments/assets/fe0e1b4b-84b3-4c8c-a085-1259fbfde543" />
