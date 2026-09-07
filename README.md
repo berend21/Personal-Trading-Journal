@@ -174,7 +174,7 @@ The application should not be exposed directly to the public internet without ap
 
 If remote access is required, a private-network solution such as a VPN is preferable to exposing the application directly to the internet.
 
-#HTTPS
+# HTTPS
 HTTPS is not currently a requirement for the intended localhost/private-network deployment.
 
 If STS is eventually exposed through a public or untrusted network, HTTPS and additional deployment hardening should be added.
@@ -214,6 +214,9 @@ Notes, screenshots, rules, and journal entries help explain why.
 4. Prefer useful data over unnecessary complexity
 STS is a personal application.
 Reliable Data => Useful Analytics => Better Review => Better Decisions
+
+# Dashboard
+<img width="1901" height="910" alt="Screenshot 2026-09-07 224201" src="https://github.com/user-attachments/assets/97c96020-807f-40be-802e-5325ff88eff8" />
 
 # Login page
 <img width="1918" height="916" alt="image" src="https://github.com/user-attachments/assets/d5f25466-f339-44b7-b833-8a21950e4df6" />
