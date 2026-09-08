@@ -11,13 +11,9 @@ VALID_ATTRIBUTIONS = {"entry", "exit"}
 TRADE_TYPES = ("HTF", "MTF", "LTF")
 DIRECTIONS = ("LONG", "SHORT")
 
-from statistics import (
-    safe_float,
-    roundit,
-    percentage,
-    calculate_streaks,
-    calculate_drawdown,
-)
+from analyze.statistics import (safe_float, roundit, percentage, calculate_streaks, calculate_drawdown)
+from analyze.confidence_interval import (confidence_interval, classify_confidence_interval)
+
 
 
 def _date_range(
@@ -601,6 +597,17 @@ def analytics():
         for row in rr_rows
     ]
 
+    expectancy_ci = confidence_interval(rr_sequence)
+
+    expectancy_ci_classification = classify_confidence_interval(expectancy_ci)
+    print("DEBUG CI")
+    print("total trades:", total_trades)
+    print("overview closed:", overview_closed_count)
+    print("RR rows:", len(rr_rows))
+    print("RR sequence:", rr_sequence[:10])
+    print("CI:", expectancy_ci)
+
+
     rr_stddev = 0.0
 
     if len(rr_sequence) > 1:
@@ -1159,6 +1166,10 @@ def analytics():
         "median_rr": median_rr,
 
         "expectancy": float(expectancy),
+
+        "expectancy_ci": expectancy_ci,
+        "expectancy_ci_classification": expectancy_ci_classification,
+
 
         "highest_rr": (
             float(highest_rr)
