@@ -1,0 +1,39 @@
+{% macro symbol_icon(data, size=36) %}
+<div
+    class="symbol-icon symbol-icon--{{ data.type }}"
+    style="--symbol-icon-size: {{ size }}px;"
+    aria-label="{{ data.symbol }}"
+>
+    {% if data.type == "forex" %}
+
+        {% if data.base %}
+            <img
+                src="{{ data.base }}"
+                class="symbol-icon__flag symbol-icon__flag--base"
+                alt=""
+            >
+        {% endif %}
+
+        {% if data.quote %}
+            <img
+                src="{{ data.quote }}"
+                class="symbol-icon__flag symbol-icon__flag--quote"
+                alt=""
+            >
+        {% endif %}
+
+    {% elif data.type == "asset" %}
+
+        <img
+            src="{{ data.icon }}"
+            class="symbol-icon__asset"
+            alt=""
+        >
+
+    {% else %}
+
+        <span class="symbol-icon__fallback"></span>
+
+    {% endif %}
+</div>
+{% endmacro %}
