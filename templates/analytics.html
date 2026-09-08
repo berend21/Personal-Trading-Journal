@@ -12,10 +12,19 @@
 <div class="analytics-header">
     <div>
         <h1>Analytics</h1>
+
         <div class="analytics-subtitle">
             Quantitative performance overview
         </div>
+
+
+        {% if date_range_label %}
+        <div class="analytics-date-range">
+            {{ date_range_label }}
+        </div>
+        {% endif %}
     </div>
+
 
     <form method="get" id="period-form">
         <div class="period-selector">
@@ -27,11 +36,11 @@
             <select
                 name="period"
                 id="period"
-                onchange="document.getElementById('period-form').submit()"
+
             >
                 <option value="monthly"
                     {% if period == 'monthly' %}selected{% endif %}>
-                    Monthly
+                    This Month
                 </option>
 
                 <option value="last_month"
@@ -39,16 +48,71 @@
                     Last Month
                 </option>
 
-                <option value="yearly"
-                    {% if period == 'yearly' %}selected{% endif %}>
-                    Yearly
+                <option value="7d"
+                    {% if period == '7d' %}selected{% endif %}>
+                    Last 7 Days
+                </option>
+
+                <option value="30d"
+                    {% if period == '30d' %}selected{% endif %}>
+                    Last 30 Days
+                </option>
+
+                <option value="90d"
+                    {% if period == '90d' %}selected{% endif %}>
+                    Last 90 Days
+                </option>
+
+                <option value="ytd"
+                    {% if period == 'ytd' %}selected{% endif %}>
+                    Year to Date
                 </option>
 
                 <option value="all"
                     {% if period == 'all' %}selected{% endif %}>
                     All Time
                 </option>
+
+                <option value="custom"
+                    {% if period == 'custom' %}selected{% endif %}>
+                    Custom
+                </option>
             </select>
+            <div
+                id="custom-date-fields"
+                class="custom-date-fields"
+                {% if period != "custom" %}style="display: none;"{% endif %}
+            >
+
+                <label for="start">
+                    From
+                </label>
+
+                <input
+                    type="date"
+                    name="start"
+                    id="start"
+                    value="{{ request.args.get('start', '') }}"
+                >
+
+                <label for="end">
+                    To
+                </label>
+
+                <input
+                    type="date"
+                    name="end"
+                    id="end"
+                    value="{{ request.args.get('end', '') }}"
+                >
+
+                <button type="submit">
+                    Apply
+                </button>
+
+            </div>
+
+
         </div>
     </form>
 </div>
@@ -291,14 +355,17 @@
         <div>
             <h2>
                 R over
-                {% if period == "monthly" %}
+                {% if period in ["monthly", "last_month", "7d", "30d", "custom"] %}
                     Days
-                {% elif period == "yearly" %}
+                {% elif period in ["90d"] %}
+                    Weeks
+                {% elif period in ["ytd", "all"] %}
                     Months
                 {% else %}
                     Trading Days
                 {% endif %}
             </h2>
+
 
             <p>
                 Performance distribution over the selected period.
@@ -472,23 +539,55 @@
                         {{ "%.2f"|format(analytics_data.expectancy) }}R
                     </span>
                 </div>
-
                 <div class="stats-row">
-                    <span class="label">Edge Status</span>
-                    <span class="value
-                        {% if analytics_data.positive_expectancy %}
-                            positive
+                    <span class="label">Expectancy 95% CI</span>
+
+                    <span class="value">
+                        {% if analytics_data.expectancy_ci %}
+                            {{ "%.2f"|format(analytics_data.expectancy_ci.lower) }}R
+                            –
+                            {{ "%.2f"|format(analytics_data.expectancy_ci.upper) }}R
                         {% else %}
-                            negative
-                        {% endif %}
-                    ">
-                        {% if analytics_data.positive_expectancy %}
-                            Positive
-                        {% else %}
-                            Negative
+                            N/A
                         {% endif %}
                     </span>
                 </div>
+
+                <div class="stats-row">
+                    <span class="label">CI Sample Size</span>
+
+                    <span class="value">
+                        {% if analytics_data.expectancy_ci %}
+                            {{ analytics_data.expectancy_ci.n }}
+                        {% else %}
+                            0
+                        {% endif %}
+                    </span>
+                </div>
+
+
+                <div class="stats-row">
+                    <span class="label">Edge Status</span>
+
+                    <span class="value
+                        {% if analytics_data.expectancy_ci_classification == 'positive' %}
+                            positive
+                        {% elif analytics_data.expectancy_ci_classification == 'negative' %}
+                            negative
+                        {% endif %}
+                    ">
+                        {% if analytics_data.expectancy_ci_classification == 'positive' %}
+                            Statistically Positive
+                        {% elif analytics_data.expectancy_ci_classification == 'negative' %}
+                            Statistically Negative
+                        {% elif analytics_data.expectancy_ci_classification == 'inconclusive' %}
+                            Inconclusive
+                        {% else %}
+                            Insufficient Data
+                        {% endif %}
+                    </span>
+                </div>
+
 
             </div>
 
@@ -1071,6 +1170,30 @@
 <script>
 
 document.addEventListener("DOMContentLoaded", function () {
+
+    const periodSelect = document.getElementById('period');
+    const customDateFields = document.getElementById('custom-date-fields');
+
+    if (periodSelect && customDateFields) {
+
+        periodSelect.addEventListener('change', function () {
+
+            if (this.value === 'custom') {
+
+                customDateFields.style.display = 'flex';
+
+            } else {
+
+                customDateFields.style.display = 'none';
+
+                document.getElementById('period-form').submit();
+
+            }
+
+        });
+
+    }
+
 
     const toggleBtn = document.querySelector('.navbar-toggle');
     const navbar = document.querySelector('.navbar');
