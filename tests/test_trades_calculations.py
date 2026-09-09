@@ -153,6 +153,65 @@ class TestCalculateRMultiple:
 
         assert result == pytest.approx(2.0)
 
+    @pytest.mark.parametrize(
+        "entry,stop_distance,price_distance",
+        [
+            (100, 5, 10),
+            (100, 5, -5),
+            (100, 5, 0),
+            (250, 25, 37.5),
+            (50, 2.5, -7.5),
+            (1000, 100, 250),
+        ],
+    )
+    def test_long_short_symmetry(
+        self,
+        entry,
+        stop_distance,
+        price_distance,
+    ):
+        long_stop = entry - stop_distance
+        long_exit = entry + price_distance
+
+        short_stop = entry + stop_distance
+        short_exit = entry - price_distance
+
+        long_r = calculate_r_multiple(
+            "LONG",
+            entry,
+            long_exit,
+            long_stop,
+        )
+
+        short_r = calculate_r_multiple(
+            "SHORT",
+            entry,
+            short_exit,
+            short_stop,
+        )
+
+        assert long_r == pytest.approx(short_r)
+
+    @pytest.mark.parametrize(
+        "scale",
+        [0.1, 0.5, 2, 10, 100],
+    )
+    def test_r_multiple_is_scale_invariant(self, scale):
+        entry = 100
+        exit_price = 110
+        stop_loss = 95
+
+        result = calculate_r_multiple(
+            "LONG",
+            entry * scale,
+            exit_price * scale,
+            stop_loss * scale,
+        )
+
+        assert result == pytest.approx(2.0)
+
+
+
 
 class TestPartialRCalculation:
 
@@ -297,6 +356,65 @@ class TestPartialRCalculation:
         )
 
         assert result == pytest.approx(0.0)
+
+    def test_weighted_partial_rr_is_average_not_total(self):
+        partials = [
+            {
+                "risk_action": "CLOSE",
+                "risk": 2.0,
+                "RR": 3.0,
+            },
+            {
+                "risk_action": "CLOSE",
+                "risk": 1.0,
+                "RR": 0.0,
+            },
+        ]
+
+        result = calculate_parent_rr_with_partials(
+            {},
+            partials,
+        )
+
+        # Weighted average:
+        # (2 * 3 + 1 * 0) / 3 = 2
+
+        assert result == pytest.approx(2.0)
+
+    def test_partial_rr_is_order_independent(self):
+        partials = [
+            {
+                "risk_action": "CLOSE",
+                "risk": 1.0,
+                "RR": 2.0,
+            },
+            {
+                "risk_action": "CLOSE",
+                "risk": 3.0,
+                "RR": -1.0,
+            },
+            {
+                "risk_action": "OPEN",
+                "risk": 2.0,
+                "RR": 99.0,
+            },
+        ]
+
+        reversed_partials = list(reversed(partials))
+
+        result = calculate_parent_rr_with_partials(
+            {},
+            partials,
+        )
+
+        reversed_result = calculate_parent_rr_with_partials(
+            {},
+            reversed_partials,
+        )
+
+        assert result == pytest.approx(reversed_result)
+
+
 
 
 class TestParsing:
