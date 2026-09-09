@@ -365,7 +365,7 @@ def add_trade():
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'''
 
     with get_db() as conn:
-        conn.execute(sql, (symbol, open_time, close_time, type, type_setup, confidence, setup, status, sort, open_price, close_price, risk, SL, TP, RR, reason, feedback, initial_risk))    
+        conn.execute(sql, (symbol, open_time, close_time, type, type_setup_json, confidence, setup, status, sort, open_price, close_price, risk, SL, TP, RR, reason, feedback, initial_risk))    
         conn.commit()
      
     flash('Trade added!', 'success')
@@ -375,6 +375,7 @@ def add_trade():
 @app.route('/edit/<int:user_id>', methods=['POST'])
 @login_required
 def edit_trade(user_id):
+
     try: 
 
         conn = get_db()
@@ -387,6 +388,7 @@ def edit_trade(user_id):
         close_time = request.form.get('close_time', '').replace('T', ' ').strip()
         type = request.form.get('type', '').strip()
         status = request.form.get('status', '').upper()
+
         sort = request.form.get('sort', '').upper()
 
         open_price = request.form.get('open_price')
@@ -408,7 +410,8 @@ def edit_trade(user_id):
         if sort and sort not in ('LONG', 'SHORT'):
             return {'success': False, 'message': 'Invalid trade direction.'}
 
-
+        if type and type not in ('HTF', 'MTF', 'LTF'):
+            return {'success': False, 'message': 'Invalid trade type.'}
 
 
         symbol = symbol if symbol else current['symbol']
@@ -427,10 +430,6 @@ def edit_trade(user_id):
         status = status if status else current['status']
         sort = sort if sort else current['sort']
 
-                # Type setup, confidence and setup are optional.
-        # If submitted, update them.
-        # If not submitted, keep the existing values.
-
         if 'type_setup' in request.form:
             active_type_setups = get_active_trade_type_setups()
             current_type_setups = parse_type_setup(current['type_setup'])
@@ -447,9 +446,9 @@ def edit_trade(user_id):
                     'message': 'Invalid trade type setup selected.'
                 }
 
-                type_setup_json = json.dumps(type_setup)
-            else:
-                type_setup_json = current['type_setup']
+            type_setup_json = json.dumps(type_setup)
+        else:
+            type_setup_json = current['type_setup']
 
             if 'confidence' in request.form:
                 if confidence:
@@ -484,11 +483,13 @@ def edit_trade(user_id):
 
 
 
+
         if 'reason' not in request.form:
-            reason = current['reason']
+            reason = current['reason'] or ''
 
         if 'feedback' not in request.form:
-            feedback = current['feedback']
+            feedback = current['feedback'] or ''
+
         try:
             if 'open_price' in request.form:
                 open_price = parse_float(open_price, 'Open price')
@@ -584,6 +585,7 @@ def edit_trade(user_id):
             close_price = None
             close_time = None
 
+
         if len(reason) > MAX_REASON_LEN:
             return {
                 'success': False,
@@ -652,18 +654,36 @@ def edit_trade(user_id):
 
         conn.execute('''UPDATE trades SET symbol=?, open_time=?, close_time=?, type=?, type_setup=?, confidence=?, setup=?, status=?, sort=?, open_price=?, close_price=?, risk=?, SL=?, TP=?, RR=?, reason=?, feedback=?, risk_action=? WHERE id=?''', 
                     (symbol, open_time, close_time, type, type_setup_json, confidence, setup, status, sort, open_price, close_price, risk, SL, TP, RR, reason, feedback, risk_action, user_id))
-        
+        updated = conn.execute(
+            'SELECT status, close_price, close_time FROM trades WHERE id=?',
+            (user_id,)
+        ).fetchone()
+
+
+        check = conn.execute(
+            "SELECT id, status, close_price, close_time FROM trades WHERE id=?",
+            (user_id,)
+        ).fetchone()
+
+
         if current['parent_id']:
             recalculate_parent(conn, current['parent_id'])
 
         
         conn.commit()
-         
+        check = conn.execute(
+            "SELECT id, status, close_price, close_time FROM trades WHERE id=?",
+            (user_id,)
+        ).fetchone()
+
+
         return {'success': True}
     
     except Exception as e:
         conn.rollback()
+
         return {'success': False, 'message': str(e)}
+
 
 
  
