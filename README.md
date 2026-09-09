@@ -83,8 +83,11 @@ Conceptually:
 
 ```
 Parent Trade
+
 ├── Partial Close #1
+
 ├── Partial Close #2
+
 └── Partial Close #3
 ```
 
