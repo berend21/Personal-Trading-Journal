@@ -1,6 +1,6 @@
 import sqlite3
 import pytest
-
+import os
 
 @pytest.fixture
 def test_db(tmp_path):
@@ -46,6 +46,10 @@ def flask_db(tmp_path, monkeypatch):
 
 
     monkeypatch.setattr("database.DATABASE", str(db_path))
+    monkeypatch.setenv("FLASK_SECRET_KEY", "test-secret-for-ci-only")
+
+    print("FLASK_SECRET_KEY =", os.environ.get("FLASK_SECRET_KEY"))
+
 
     import app as app_module
     from database import init_db
