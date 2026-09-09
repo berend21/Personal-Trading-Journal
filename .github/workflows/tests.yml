@@ -24,5 +24,7 @@ jobs:
           pip install pytest pytest-cov
 
       - name: Run tests
+        env:
+          FLASK_SECRET_KEY: test-secret-for-ci-only
         run: |
           python -m pytest --cov=. --cov-report=term-missing
