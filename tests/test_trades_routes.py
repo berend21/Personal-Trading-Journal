@@ -508,7 +508,19 @@ def test_add_trade_rejects_close_before_open(authenticated_client):
     assert response.status_code == 200
     assert b"Close time cannot be before open time" in response.data
 
-def test_edit_trade_requires_login(client):
+def test_edit_trade_requires_login(client, flask_connection):
+    flask_connection.execute(
+        """
+        INSERT INTO users (email, password)
+        VALUES (?, ?)
+        """,
+        (
+            "test@example.com",
+            "test-password",
+        ),
+    )
+    flask_connection.commit()
+
     response = client.post(
         "/edit/1",
         data={
@@ -518,6 +530,19 @@ def test_edit_trade_requires_login(client):
 
     assert response.status_code == 302
     assert "/login" in response.location
+
+
+def test_edit_trade_requires_setup_when_no_users(client):
+    response = client.post(
+        "/edit/1",
+        data={
+            "symbol": "AAPL",
+        },
+    )
+
+    assert response.status_code == 302
+    assert "/setup" in response.location
+
 
 
 def test_edit_trade_not_found(authenticated_client):
