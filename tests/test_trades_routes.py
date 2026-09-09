@@ -717,3 +717,333 @@ def test_edit_trade_rejects_invalid_direction(
     data = response.get_json()
     assert data["success"] is False
     assert data["message"] == "Invalid trade direction."
+
+
+def test_edit_trade_rejects_invalid_type(
+    authenticated_client,
+    flask_connection,
+):
+    flask_connection.execute(
+        """
+        INSERT INTO trades (
+            symbol,
+            type,
+            status,
+            sort,
+            risk,
+            initial_risk
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "AAPL",
+            "HTF",
+            "OPEN",
+            "LONG",
+            1,
+            1,
+        ),
+    )
+    flask_connection.commit()
+
+    response = authenticated_client.post(
+        "/edit/1",
+        data={
+            "type": "INVALID",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["success"] is False
+    assert data["message"] == "Invalid trade type."
+
+
+def test_edit_trade_rejects_missing_risk(
+    authenticated_client,
+    flask_connection,
+):
+    flask_connection.execute(
+        """
+        INSERT INTO trades (
+            symbol,
+            type,
+            status,
+            sort,
+            risk,
+            initial_risk
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "AAPL",
+            "HTF",
+            "OPEN",
+            "LONG",
+            1,
+            1,
+        ),
+    )
+    flask_connection.commit()
+
+    response = authenticated_client.post(
+        "/edit/1",
+        data={
+            "risk": "",
+        },
+    )
+
+    assert response.status_code == 302
+    assert "/trades" in response.location
+
+def test_edit_trade_rejects_zero_risk(
+    authenticated_client,
+    flask_connection,
+):
+    flask_connection.execute(
+        """
+        INSERT INTO trades (
+            symbol,
+            type,
+            status,
+            sort,
+            risk,
+            initial_risk
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "AAPL",
+            "HTF",
+            "OPEN",
+            "LONG",
+            1,
+            1,
+        ),
+    )
+    flask_connection.commit()
+
+    response = authenticated_client.post(
+        "/edit/1",
+        data={
+            "risk": "0",
+        },
+    )
+
+    assert response.status_code == 302
+    assert "/trades" in response.location
+
+def test_edit_trade_rejects_long_sl_above_open(
+    authenticated_client,
+    flask_connection,
+):
+    flask_connection.execute(
+        """
+        INSERT INTO trades (
+            symbol, type, status, sort,
+            open_price, risk, SL, TP, initial_risk
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "AAPL", "HTF", "OPEN", "LONG",
+            100, 1, 95, 110, 1,
+        ),
+    )
+    flask_connection.commit()
+
+    response = authenticated_client.post(
+        "/edit/1",
+        data={
+            "sort": "LONG",
+            "open_price": "100",
+            "SL": "105",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["success"] is False
+    assert data["message"] == (
+        "For a LONG trade, SL must be below the open price."
+    )
+def test_edit_trade_rejects_short_sl_below_open(
+    authenticated_client,
+    flask_connection,
+):
+    flask_connection.execute(
+        """
+        INSERT INTO trades (
+            symbol, type, status, sort,
+            open_price, risk, SL, TP, initial_risk
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "AAPL", "HTF", "OPEN", "SHORT",
+            100, 1, 105, 90, 1,
+        ),
+    )
+    flask_connection.commit()
+
+    response = authenticated_client.post(
+        "/edit/1",
+        data={
+            "sort": "SHORT",
+            "open_price": "100",
+            "SL": "95",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["success"] is False
+    assert data["message"] == (
+        "For a SHORT trade, SL must be above the open price."
+    )
+def test_edit_trade_rejects_long_tp_below_open(
+    authenticated_client,
+    flask_connection,
+):
+    flask_connection.execute(
+        """
+        INSERT INTO trades (
+            symbol, type, status, sort,
+            open_price, risk, SL, TP, initial_risk
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "AAPL", "HTF", "OPEN", "LONG",
+            100, 1, 95, 110, 1,
+        ),
+    )
+    flask_connection.commit()
+
+    response = authenticated_client.post(
+        "/edit/1",
+        data={
+            "sort": "LONG",
+            "open_price": "100",
+            "TP": "90",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["success"] is False
+    assert data["message"] == (
+        "For a LONG trade, TP must be above the open price."
+    )
+def test_edit_trade_closed_requires_close_price(
+    authenticated_client,
+    flask_connection,
+):
+    flask_connection.execute(
+        """
+        INSERT INTO trades (
+            symbol, type, status, sort,
+            open_price, risk, SL, TP, initial_risk
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "AAPL", "HTF", "OPEN", "LONG",
+            100, 1, 95, 110, 1,
+        ),
+    )
+    flask_connection.commit()
+
+    response = authenticated_client.post(
+        "/edit/1",
+        data={
+            "status": "CLOSED",
+            "close_price": "",
+            "close_time": "2026-08-31 11:00",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["success"] is False
+    assert data["message"] == (
+        "A CLOSED trade must have a close price."
+    )
+def test_edit_trade_closed_requires_close_time(
+    authenticated_client,
+    flask_connection,
+):
+    flask_connection.execute(
+        """
+        INSERT INTO trades (
+            symbol, type, status, sort,
+            open_price, risk, SL, TP, initial_risk
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "AAPL", "HTF", "OPEN", "LONG",
+            100, 1, 95, 110, 1,
+        ),
+    )
+    flask_connection.commit()
+
+    response = authenticated_client.post(
+        "/edit/1",
+        data={
+            "status": "CLOSED",
+            "close_price": "108",
+            "close_time": "",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["success"] is False
+    assert data["message"] == (
+        "A CLOSED trade must have a close time."
+    )
+def test_edit_trade_open_clears_close_values(
+    authenticated_client,
+    flask_connection,
+):
+    flask_connection.execute(
+        """
+        INSERT INTO trades (
+            symbol, type, status, sort,
+            open_price, close_price, close_time,
+            risk, SL, TP, initial_risk
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "AAPL", "HTF", "CLOSED", "LONG",
+            100, 108, "2026-08-31 11:00",
+            1, 95, 110, 1,
+        ),
+    )
+    flask_connection.commit()
+
+    response = authenticated_client.post(
+        "/edit/1",
+        data={
+            "status": "OPEN",
+        },
+    )
+
+    assert response.status_code == 200
+
+    trade = flask_connection.execute(
+        "SELECT * FROM trades WHERE id = ?",
+        (1,),
+    ).fetchone()
+
+    assert trade["status"] == "OPEN"
+    assert trade["close_price"] is None
+    assert trade["close_time"] is None
