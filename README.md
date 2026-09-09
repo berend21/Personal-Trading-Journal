@@ -360,7 +360,6 @@ The project is actively evolving. Areas I intend to improve include:
 
 - Automated database backups
 - Backup verification and restore workflow
-- Stronger database constraints
 - Cleaner database migration system
 
 - More detailed equity curves
@@ -380,7 +379,6 @@ The project is actively evolving. Areas I intend to improve include:
 - Expanded integration test coverage
 - Cleaner modular architecture
 - Improved database abstraction
-- CI automation
 
 # Disclaimer
 
