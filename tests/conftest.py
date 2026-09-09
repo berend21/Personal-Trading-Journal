@@ -39,3 +39,54 @@ def test_db(tmp_path):
     yield conn
 
     conn.close()
+
+@pytest.fixture
+def flask_db(tmp_path, monkeypatch):
+    db_path = tmp_path / "flask_test.db"
+
+
+    monkeypatch.setattr("database.DATABASE", str(db_path))
+
+    import app as app_module
+    from database import init_db
+
+    app = app_module.app
+
+    app.config.update(
+        TESTING=True,
+        WTF_CSRF_ENABLED=False,
+        SECRET_KEY="test-secret-key",
+    )
+
+    init_db()
+
+    yield db_path
+
+
+
+@pytest.fixture
+def client(flask_db):
+    from extensions import app
+
+    with app.test_client() as client:
+        yield client
+
+
+@pytest.fixture
+def authenticated_client(client):
+    with client.session_transaction() as session:
+        session["user_id"] = 1
+        session["username"] = "test@example.com"
+        session.permanent = True
+
+    return client
+
+
+@pytest.fixture
+def flask_connection(flask_db):
+    conn = sqlite3.connect(flask_db)
+    conn.row_factory = sqlite3.Row
+
+    yield conn
+
+    conn.close()
